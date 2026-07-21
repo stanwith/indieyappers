@@ -34,8 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
-# local database
+# local database (the scrubbed deploy-snapshot.db IS committed)
 /data/yapper.db*
+/data/deploy-snapshot.db-*
 
 # vercel
 .vercel

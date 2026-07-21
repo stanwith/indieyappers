@@ -18,7 +18,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function main() {
   const db = getDb();
-  const founders = db.prepare("SELECT * FROM founders").all() as FounderRow[];
+  let founders = db.prepare("SELECT * FROM founders").all() as FounderRow[];
+
+  // Optional: `npm run refresh -- handle1 handle2` refreshes only those.
+  const only = process.argv.slice(2).map((h) => h.replace(/^@/, "").toLowerCase());
+  if (only.length > 0) {
+    founders = founders.filter((f) => only.includes(f.handle.toLowerCase()));
+  }
   console.log(`Refreshing ${founders.length} founders...`);
 
   console.log("Resolving profiles (users/by)...");

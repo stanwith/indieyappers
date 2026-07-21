@@ -67,7 +67,10 @@ export function getLeaderboard(window: TimeWindow): LeaderboardEntry[] {
       companyName: primaryProduct(r.product),
       companyDomain: r.company_domain ?? null,
       companyLogo: r.company_logo ?? null,
-      companySlug: companySlug(r.company_domain, primaryProduct(r.product)),
+      companySlug: companySlug(
+        r.company_domain,
+        primaryProduct(r.product) || r.handle
+      ),
       followers: r.followers ?? r.approx_followers,
       postsOriginal: original,
       postsReply: reply,

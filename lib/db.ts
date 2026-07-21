@@ -3,14 +3,30 @@ import path from "node:path";
 import fs from "node:fs";
 import type { SeedFounder } from "./types";
 
-const DB_PATH = path.join(process.cwd(), "data", "yapper.db");
-
 let db: Database.Database | null = null;
+
+/**
+ * Locally the database lives in data/yapper.db. On Vercel the filesystem is
+ * read-only, so the committed scrubbed snapshot is copied to /tmp at cold
+ * start; writes (sessions, sign-ups) persist per instance until it recycles.
+ */
+function resolveDbPath(): string {
+  const localPath = path.join(process.cwd(), "data", "yapper.db");
+  if (!process.env.VERCEL) return localPath;
+
+  const tmpPath = "/tmp/yapper.db";
+  if (!fs.existsSync(tmpPath)) {
+    const snapshot = path.join(process.cwd(), "data", "deploy-snapshot.db");
+    if (fs.existsSync(snapshot)) fs.copyFileSync(snapshot, tmpPath);
+  }
+  return tmpPath;
+}
 
 export function getDb(): Database.Database {
   if (db) return db;
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  db = new Database(DB_PATH);
+  const dbPath = resolveDbPath();
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   migrate(db);
   seedFounders(db);
@@ -57,6 +73,28 @@ function migrate(db: Database.Database) {
     "company_domain TEXT",
     "company_logo TEXT",
     "company_desc TEXT",
+  ]) {
+    try {
+      db.exec(`ALTER TABLE founders ADD COLUMN ${col}`);
+    } catch {
+      /* column already exists */
+    }
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      handle TEXT NOT NULL REFERENCES founders(handle),
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Marks accounts that joined by signing in with X (vs the curated seed),
+  // plus their OAuth tokens (offline.access grants a refresh token).
+  for (const col of [
+    "joined_via_x INTEGER NOT NULL DEFAULT 0",
+    "oauth_access_token TEXT",
+    "oauth_refresh_token TEXT",
   ]) {
     try {
       db.exec(`ALTER TABLE founders ADD COLUMN ${col}`);
