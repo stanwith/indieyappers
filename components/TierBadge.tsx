@@ -1,17 +1,21 @@
-const TIER_STYLES: Record<number, { label: string; className: string }> = {
-  1: { label: "Anchor", className: "bg-[var(--iris-soft)] text-iris-700" },
-  2: { label: "Core", className: "bg-[var(--green-soft)] text-[var(--green-500)]" },
-  3: { label: "Community", className: "bg-[var(--amber-soft)] text-[var(--amber-500)]" },
-  4: { label: "Rising", className: "bg-gray-100 text-gray-500" },
+const TIER_LABELS: Record<number, string> = {
+  1: "anchor",
+  2: "core",
+  3: "community",
+  4: "rising",
 };
 
 export function TierBadge({ tier }: { tier: number }) {
-  const style = TIER_STYLES[tier] ?? TIER_STYLES[4];
+  const isAnchor = tier === 1;
   return (
     <span
-      className={`font-code text-[10.5px] uppercase tracking-wider px-2 py-0.5 rounded-full ${style.className}`}
+      className={`shrink-0 rounded-full px-2 py-px text-[11px] font-medium ${
+        isAnchor
+          ? "bg-[var(--iris-soft)] text-[var(--iris-700)]"
+          : "bg-gray-100 text-text-secondary"
+      }`}
     >
-      {style.label}
+      {TIER_LABELS[tier] ?? "—"}
     </span>
   );
 }

@@ -51,6 +51,33 @@ function migrate(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_snapshots_handle_time
       ON activity_snapshots (handle, captured_at DESC);
   `);
+
+  // Company enrichment columns (context.dev brand data), added idempotently.
+  for (const col of [
+    "company_domain TEXT",
+    "company_logo TEXT",
+    "company_desc TEXT",
+  ]) {
+    try {
+      db.exec(`ALTER TABLE founders ADD COLUMN ${col}`);
+    } catch {
+      /* column already exists */
+    }
+  }
+
+  // Engagement metrics per snapshot, added idempotently.
+  for (const col of [
+    "interactions_7d INTEGER NOT NULL DEFAULT 0",
+    "interactions_30d INTEGER NOT NULL DEFAULT 0",
+    "impressions_7d INTEGER NOT NULL DEFAULT 0",
+    "impressions_30d INTEGER NOT NULL DEFAULT 0",
+  ]) {
+    try {
+      db.exec(`ALTER TABLE activity_snapshots ADD COLUMN ${col}`);
+    } catch {
+      /* column already exists */
+    }
+  }
 }
 
 /** Upsert seed founders so new spreadsheet rows appear after a restart. */

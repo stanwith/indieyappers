@@ -17,6 +17,14 @@ export interface XTweet {
   id: string;
   created_at: string;
   referenced_tweets?: { type: "retweeted" | "replied_to" | "quoted"; id: string }[];
+  public_metrics?: {
+    retweet_count: number;
+    reply_count: number;
+    like_count: number;
+    quote_count: number;
+    bookmark_count?: number;
+    impression_count?: number;
+  };
 }
 
 function bearerToken(): string {
@@ -78,7 +86,7 @@ export async function getUserTweetsSince(
     const params = new URLSearchParams({
       max_results: "100",
       start_time: startTime.toISOString(),
-      "tweet.fields": "created_at,referenced_tweets",
+      "tweet.fields": "created_at,referenced_tweets,public_metrics",
     });
     if (paginationToken) params.set("pagination_token", paginationToken);
 
@@ -104,4 +112,15 @@ export function classifyTweet(t: XTweet): "original" | "reply" | "retweet" {
   if (refs.some((r) => r.type === "retweeted")) return "retweet";
   if (refs.some((r) => r.type === "replied_to")) return "reply";
   return "original"; // quotes count as originals
+}
+
+/** Likes + replies + retweets + quotes received by a tweet. */
+export function tweetInteractions(t: XTweet): number {
+  const m = t.public_metrics;
+  if (!m) return 0;
+  return m.like_count + m.reply_count + m.retweet_count + m.quote_count;
+}
+
+export function tweetImpressions(t: XTweet): number {
+  return t.public_metrics?.impression_count ?? 0;
 }

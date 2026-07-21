@@ -28,8 +28,9 @@ const insertSnapshot = db.prepare(`
   INSERT INTO activity_snapshots (
     handle, captured_at, followers, lifetime_tweet_count,
     posts_7d_original, posts_7d_reply, posts_7d_retweet,
-    posts_30d_original, posts_30d_reply, posts_30d_retweet
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    posts_30d_original, posts_30d_reply, posts_30d_retweet,
+    interactions_7d, interactions_30d, impressions_7d, impressions_30d
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 db.prepare("DELETE FROM activity_snapshots").run();
@@ -58,6 +59,13 @@ for (const f of founders) {
     const o7 = Math.round(perDayOriginal * 7);
     const r7 = Math.round(perDayReply * 7);
     const rt7 = Math.round(perDayRetweet * 7);
+    const posts7 = o7 + r7 + rt7;
+
+    // Impressions scale with audience and volume; interactions are a slice of that.
+    const reach = followers * (0.15 + rand() * 0.55);
+    const imp7 = Math.round(posts7 * reach * (0.08 + rand() * 0.25) * drift);
+    const int7 = Math.round(imp7 * (0.008 + rand() * 0.03));
+    const windowScale = 3.6 + rand() * 0.8;
 
     insertSnapshot.run(
       f.handle,
@@ -67,9 +75,13 @@ for (const f of founders) {
       o7,
       r7,
       rt7,
-      Math.round(o7 * (3.6 + rand() * 0.8)),
-      Math.round(r7 * (3.6 + rand() * 0.8)),
-      Math.round(rt7 * (3.6 + rand() * 0.8))
+      Math.round(o7 * windowScale),
+      Math.round(r7 * windowScale),
+      Math.round(rt7 * windowScale),
+      int7,
+      Math.round(int7 * windowScale),
+      imp7,
+      Math.round(imp7 * windowScale)
     );
   }
 }

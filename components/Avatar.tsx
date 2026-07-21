@@ -1,12 +1,5 @@
 import Image from "next/image";
 
-const FALLBACK_BG = [
-  "bg-iris-100 text-iris-700",
-  "bg-[var(--green-soft)] text-[var(--green-500)]",
-  "bg-[var(--amber-soft)] text-[var(--amber-500)]",
-  "bg-gray-100 text-gray-600",
-];
-
 export function Avatar({
   name,
   url,
@@ -35,11 +28,10 @@ export function Avatar({
     .map((w) => w[0])
     .join("")
     .toUpperCase();
-  const palette = FALLBACK_BG[name.length % FALLBACK_BG.length];
   return (
     <div
-      className={`flex items-center justify-center rounded-full font-medium shrink-0 ${palette}`}
-      style={{ width: size, height: size, fontSize: size * 0.36 }}
+      className="flex items-center justify-center rounded-full border border-border-subtle bg-[var(--surface-sunken)] font-medium text-text-secondary shrink-0"
+      style={{ width: size, height: size, fontSize: size * 0.34 }}
     >
       {initials}
     </div>

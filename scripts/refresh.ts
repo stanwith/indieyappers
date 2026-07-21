@@ -8,6 +8,8 @@ import {
   getUsersByHandles,
   getUserTweetsSince,
   classifyTweet,
+  tweetInteractions,
+  tweetImpressions,
   type XUser,
 } from "../lib/x-api";
 import type { FounderRow } from "../lib/types";
@@ -53,8 +55,9 @@ async function main() {
     INSERT INTO activity_snapshots (
       handle, captured_at, followers, lifetime_tweet_count,
       posts_7d_original, posts_7d_reply, posts_7d_retweet,
-      posts_30d_original, posts_30d_reply, posts_30d_retweet
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      posts_30d_original, posts_30d_reply, posts_30d_retweet,
+      interactions_7d, interactions_30d, impressions_7d, impressions_30d
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const start30 = new Date(Date.now() - 30 * DAY_MS);
@@ -67,13 +70,19 @@ async function main() {
 
     const tweets = await getUserTweetsSince(u.id, start30);
     const counts = {
-      "7d": { original: 0, reply: 0, retweet: 0 },
-      "30d": { original: 0, reply: 0, retweet: 0 },
+      "7d": { original: 0, reply: 0, retweet: 0, interactions: 0, impressions: 0 },
+      "30d": { original: 0, reply: 0, retweet: 0, interactions: 0, impressions: 0 },
     };
     for (const t of tweets) {
       const kind = classifyTweet(t);
       counts["30d"][kind]++;
-      if (new Date(t.created_at).getTime() >= cutoff7) counts["7d"][kind]++;
+      counts["30d"].interactions += tweetInteractions(t);
+      counts["30d"].impressions += tweetImpressions(t);
+      if (new Date(t.created_at).getTime() >= cutoff7) {
+        counts["7d"][kind]++;
+        counts["7d"].interactions += tweetInteractions(t);
+        counts["7d"].impressions += tweetImpressions(t);
+      }
     }
 
     insertSnapshot.run(
@@ -86,7 +95,11 @@ async function main() {
       counts["7d"].retweet,
       counts["30d"].original,
       counts["30d"].reply,
-      counts["30d"].retweet
+      counts["30d"].retweet,
+      counts["7d"].interactions,
+      counts["30d"].interactions,
+      counts["7d"].impressions,
+      counts["30d"].impressions
     );
 
     done++;
