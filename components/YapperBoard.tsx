@@ -25,12 +25,14 @@ export function YapperBoard({
   companies,
   window,
   initialTab,
+  sessionHandle,
   updatedLabel,
 }: {
   entries: LeaderboardEntry[];
   companies: CompanyEntry[];
   window: TimeWindow;
   initialTab: Tab;
+  sessionHandle: string | null;
   updatedLabel: string | null;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -194,6 +196,7 @@ export function YapperBoard({
             rows={pageRows as LeaderboardEntry[]}
             query={query}
             window={window}
+            sessionHandle={sessionHandle}
           />
         ) : (
           <CompaniesTable
@@ -244,10 +247,12 @@ function PeopleTable({
   rows,
   query,
   window,
+  sessionHandle,
 }: {
   rows: LeaderboardEntry[];
   query: string;
   window: TimeWindow;
+  sessionHandle: string | null;
 }) {
   const router = useRouter();
   return (
@@ -264,11 +269,17 @@ function PeopleTable({
         </tr>
       </thead>
       <tbody>
-        {rows.map((e) => (
+        {rows.map((e) => {
+          const isMe =
+            sessionHandle !== null &&
+            e.handle.toLowerCase() === sessionHandle.toLowerCase();
+          return (
           <tr
             key={e.handle}
             onClick={() => router.push(`/company/${e.companySlug}`)}
-            className="cursor-pointer border-b border-border-subtle last:border-b-0 hover:bg-[var(--surface-hover-ink)] transition-colors duration-150"
+            className={`cursor-pointer border-b border-border-subtle last:border-b-0 hover:bg-[var(--surface-hover-ink)] transition-colors duration-150 ${
+              isMe ? "bg-[var(--iris-faint)]" : ""
+            }`}
           >
             <td className="py-3 pl-5">
               <span
@@ -285,8 +296,15 @@ function PeopleTable({
               <span className="flex items-center gap-3 min-w-0">
                 <Avatar name={e.name} url={e.avatarUrl} size={34} />
                 <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-[13px] font-medium text-text leading-tight">
-                    {e.name}
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="truncate text-[13px] font-medium text-text leading-tight">
+                      {e.name}
+                    </span>
+                    {isMe && (
+                      <span className="shrink-0 rounded-full bg-[var(--iris-soft)] px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-[var(--iris-700)]">
+                        you
+                      </span>
+                    )}
                   </span>
                   <span className="font-code text-[11px] text-text-tertiary truncate">
                     @{e.handle}
@@ -318,7 +336,8 @@ function PeopleTable({
               </a>
             </td>
           </tr>
-        ))}
+          );
+        })}
         {rows.length === 0 && <EmptyRow query={query} colSpan={8} />}
       </tbody>
     </table>

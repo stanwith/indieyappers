@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { getCompanies, getLeaderboard, getStats } from "@/lib/leaderboard";
+import { getSessionUser } from "@/lib/auth";
 import type { TimeWindow } from "@/lib/types";
+import { AuthBanner } from "@/components/AuthBanner";
 import { TopNav } from "@/components/TopNav";
 import { YapperBoard } from "@/components/YapperBoard";
 import { formatRelative } from "@/lib/format";
@@ -10,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ window?: string; tab?: string }>;
+  searchParams: Promise<{ window?: string; tab?: string; auth?: string }>;
 }) {
   const params = await searchParams;
   const window: TimeWindow = params.window === "30d" ? "30d" : "7d";
@@ -18,6 +20,19 @@ export default async function Home({
   const entries = getLeaderboard(window);
   const companies = getCompanies(window);
   const stats = getStats(window);
+
+  const sessionUser = await getSessionUser();
+  const myEntry = sessionUser
+    ? entries.find(
+        (e) => e.handle.toLowerCase() === sessionUser.handle.toLowerCase()
+      )
+    : null;
+  const authStatus =
+    params.auth === "ok" && sessionUser
+      ? ("ok" as const)
+      : params.auth === "failed"
+        ? ("failed" as const)
+        : null;
 
   return (
     <>
@@ -42,11 +57,21 @@ export default async function Home({
           </p>
         </header>
 
+        {authStatus && (
+          <AuthBanner
+            status={authStatus}
+            handle={sessionUser?.handle}
+            rank={myEntry?.rank ?? null}
+            total={entries.length}
+          />
+        )}
+
         <YapperBoard
           entries={entries}
           companies={companies}
           window={window}
           initialTab={initialTab}
+          sessionHandle={sessionUser?.handle ?? null}
           updatedLabel={
             stats.lastRefreshed
               ? `updated ${formatRelative(stats.lastRefreshed)}`
