@@ -35,6 +35,10 @@ The bearer token comes from a read-only app in the [X developer console](https:/
 | `npm run mock` | Seed deterministic demo data (replaces existing snapshots) |
 | `node scripts/csv-to-seed.mjs <csv>` | Regenerate `data/founders.json` from a spreadsheet export |
 
+## Roadmap
+
+- Threads will be added to this later.
+
 ## Structure
 
 - `app/` — Next.js App Router pages (server-rendered leaderboard)
