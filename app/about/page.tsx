@@ -15,11 +15,11 @@ export default function AboutPage() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-16 pt-14 sm:px-8">
         <header className="flex flex-col items-start">
           <Image
-            src="/stanley-orb.png"
+            src="/stanley-wings.png"
             alt="Stanley"
-            width={56}
+            width={67}
             height={68}
-            className="h-[68px] w-[56px] select-none object-contain"
+            className="h-[68px] w-[67px] select-none object-contain"
             priority
           />
           <p className="stanley-kicker mt-6">About · Yapper</p>
