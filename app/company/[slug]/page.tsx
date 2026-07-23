@@ -17,7 +17,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const detail = getCompanyDetail(decodeURIComponent(slug), "7d");
+  const detail = await getCompanyDetail(decodeURIComponent(slug), "7d");
   return {
     title: detail
       ? `${detail.name} — Indie Hot 100`
@@ -35,7 +35,7 @@ export default async function CompanyPage({
   const { slug } = await params;
   const sp = await searchParams;
   const window: TimeWindow = sp.window === "30d" ? "30d" : "7d";
-  const detail = getCompanyDetail(decodeURIComponent(slug), window);
+  const detail = await getCompanyDetail(decodeURIComponent(slug), window);
   if (!detail) notFound();
 
   return (

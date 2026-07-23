@@ -10,12 +10,13 @@ import {
   tweetImpressions,
 } from "./x-api";
 import type { JoinedMetrics } from "./pgstore";
+import type { TopTweet } from "./types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function computeJoinedMetrics(
   xUserId: string
-): Promise<JoinedMetrics> {
+): Promise<{ metrics: JoinedMetrics; topTweets: TopTweet[] }> {
   const start30 = new Date(Date.now() - 30 * DAY_MS);
   const cutoff7 = Date.now() - 7 * DAY_MS;
   const tweets = await getUserTweetsSince(xUserId, { startTime: start30 });
@@ -47,5 +48,23 @@ export async function computeJoinedMetrics(
     }
   }
 
-  return metrics;
+  const topTweets: TopTweet[] = tweets
+    .filter(
+      (t) =>
+        new Date(t.created_at).getTime() >= cutoff7 &&
+        classifyTweet(t) === "original"
+    )
+    .sort((a, b) => tweetInteractions(b) - tweetInteractions(a))
+    .slice(0, 3)
+    .map((t) => ({
+      tweetId: t.id,
+      text: t.text ?? "",
+      createdAt: t.created_at,
+      likes: t.public_metrics?.like_count ?? 0,
+      retweets: t.public_metrics?.retweet_count ?? 0,
+      replies: t.public_metrics?.reply_count ?? 0,
+      impressions: t.public_metrics?.impression_count ?? 0,
+    }));
+
+  return { metrics, topTweets };
 }

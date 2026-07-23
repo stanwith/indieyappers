@@ -1,5 +1,9 @@
 import { getDb } from "./db";
-import { pgConfigured, pgListJoinedFounders } from "./pgstore";
+import {
+  pgConfigured,
+  pgGetJoinedFounder,
+  pgListJoinedFounders,
+} from "./pgstore";
 import { companySlug } from "./slug";
 import {
   yapScore,
@@ -64,7 +68,7 @@ export function getLeaderboard(window: TimeWindow): LeaderboardEntry[] {
       tier: r.tier,
       tierLabel: r.tier_label,
       avatarUrl: r.avatar_url ?? `https://unavatar.io/twitter/${r.handle}`,
-      companyName: primaryProduct(r.product),
+      companyName: primaryProduct(r.product) || null,
       companyDomain: r.company_domain ?? null,
       companyLogo: r.company_logo ?? null,
       companySlug: companySlug(
@@ -200,12 +204,16 @@ export async function getLeaderboardWithSignups(
   return entries;
 }
 
-/** Everything the company page needs: profile, ranked members, rank history. */
-export function getCompanyDetail(
+/**
+ * Everything the profile page needs: company (or person) info, ranked
+ * members, and top posts. Falls back to the shared Postgres store for
+ * sign-ups that the nightly pipeline hasn't adopted yet.
+ */
+export async function getCompanyDetail(
   slug: string,
   window: TimeWindow
-): CompanyDetail | null {
-  const members = getLeaderboard(window)
+): Promise<CompanyDetail | null> {
+  const members = (await getLeaderboardWithSignups(window))
     .filter((e) => e.companySlug === slug)
     .map((e, i) => ({ ...e, rank: i + 1 }));
   if (members.length === 0) return null;
@@ -214,16 +222,35 @@ export function getCompanyDetail(
   const top = members[0];
   const founder = db
     .prepare("SELECT * FROM founders WHERE handle = ?")
-    .get(top.handle) as FounderRow;
+    .get(top.handle) as FounderRow | undefined;
 
+  // Pre-adoption sign-up: profile data lives in Postgres.
+  if (!founder) {
+    const joined = await pgGetJoinedFounder(top.handle);
+    return {
+      slug,
+      name: top.name,
+      domain: null,
+      logo: null,
+      description: `${top.name} joined the leaderboard with Sign in with X.`,
+      bannerUrl: joined?.banner_url ?? null,
+      members,
+      topTweets: joined?.top_tweets_json
+        ? { [top.handle]: JSON.parse(joined.top_tweets_json) }
+        : {},
+    };
+  }
+
+  const isPersonPage = !top.companyName;
   return {
     slug,
     name: top.companyName ?? top.name,
     domain: top.companyDomain,
     logo: top.companyLogo,
-    description:
-      founder.company_desc ??
-      `${top.companyName ?? top.name} is what @${top.handle} ships when they're not posting. ${founder.notes}`,
+    description: isPersonPage
+      ? `${top.name} joined the leaderboard with Sign in with X.`
+      : (founder.company_desc ??
+        `${top.companyName} is what @${top.handle} ships when they're not posting. ${founder.notes}`),
     bannerUrl: founder.banner_url,
     members,
     topTweets: getTopTweets(members.map((m) => m.handle)),

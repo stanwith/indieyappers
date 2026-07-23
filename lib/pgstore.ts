@@ -29,6 +29,8 @@ export interface JoinedFounder extends JoinedMetrics {
   oauth_access_token: string | null;
   oauth_refresh_token: string | null;
   metrics_updated_at: string | null;
+  /** JSON array of their top posts of the week (TopTweet shape). */
+  top_tweets_json: string | null;
 }
 
 let pool: Pool | null = null;
@@ -77,7 +79,8 @@ async function ensureSchema(): Promise<void> {
        ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS interactions_30d INTEGER NOT NULL DEFAULT 0;
        ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS impressions_7d INTEGER NOT NULL DEFAULT 0;
        ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS impressions_30d INTEGER NOT NULL DEFAULT 0;
-       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS metrics_updated_at TIMESTAMPTZ;`
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS metrics_updated_at TIMESTAMPTZ;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS top_tweets_json TEXT;`
     )
     .then(() => undefined);
   await schemaReady;
@@ -143,7 +146,8 @@ export async function pgUpsertJoinedFounder(f: JoinedFounderInsert) {
 export async function pgUpdateJoinedMetrics(
   handle: string,
   m: JoinedMetrics,
-  bannerUrl: string | null
+  bannerUrl: string | null,
+  topTweetsJson: string | null = null
 ) {
   await ensureSchema();
   await getPool().query(
@@ -153,6 +157,7 @@ export async function pgUpdateJoinedMetrics(
        interactions_7d = $8, interactions_30d = $9,
        impressions_7d = $10, impressions_30d = $11,
        banner_url = COALESCE($12, banner_url),
+       top_tweets_json = COALESCE($13, top_tweets_json),
        metrics_updated_at = now()
      WHERE handle = $1`,
     [
@@ -168,6 +173,7 @@ export async function pgUpdateJoinedMetrics(
       m.impressions_7d,
       m.impressions_30d,
       bannerUrl,
+      topTweetsJson,
     ]
   );
 }

@@ -193,9 +193,7 @@ function PeopleTable({
           return (
           <tr
             key={e.handle}
-            onClick={() => {
-              if (e.companyName) router.push(`/company/${e.companySlug}`);
-            }}
+            onClick={() => router.push(`/company/${e.companySlug}`)}
             className={`cursor-pointer border-b border-border-subtle last:border-b-0 hover:bg-[var(--surface-hover-ink)] transition-colors duration-150 ${
               isMe ? "bg-[var(--iris-faint)]" : ""
             }`}
