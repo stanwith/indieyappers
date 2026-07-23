@@ -38,7 +38,7 @@ export default async function Home({
       <main className="yapper-hero-glow mx-auto w-full max-w-6xl flex-1 px-5 pb-16 pt-12 sm:px-8">
         <header className="mb-10 flex flex-col items-center text-center">
           <Image
-            src="/stanley-mascot.png"
+            src="/stanley-mascot-2.png"
             alt="Stanley"
             width={82}
             height={85}

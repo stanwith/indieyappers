@@ -15,7 +15,7 @@ export default function AboutPage() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-16 pt-14 sm:px-8">
         <header className="flex flex-col items-start">
           <Image
-            src="/stanley-mascot.png"
+            src="/stanley-mascot-2.png"
             alt="Stanley"
             width={67}
             height={68}
