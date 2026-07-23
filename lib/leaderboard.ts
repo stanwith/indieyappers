@@ -157,8 +157,12 @@ export async function getLeaderboardWithSignups(
   const seen = new Set(entries.map((e) => e.handle.toLowerCase()));
   for (const j of joined) {
     if (seen.has(j.handle.toLowerCase())) continue;
+    const original =
+      window === "7d" ? j.posts_7d_original : j.posts_30d_original;
+    const reply = window === "7d" ? j.posts_7d_reply : j.posts_30d_reply;
+    const retweet = window === "7d" ? j.posts_7d_retweet : j.posts_30d_retweet;
     entries.push({
-      rank: entries.length + 1,
+      rank: 0,
       handle: j.handle,
       name: j.name,
       product: "",
@@ -170,18 +174,29 @@ export async function getLeaderboardWithSignups(
       companyLogo: null,
       companySlug: companySlug(null, j.handle),
       followers: j.followers,
-      postsOriginal: 0,
-      postsReply: 0,
-      postsRetweet: 0,
-      postsTotal: 0,
-      yapScore: 0,
-      interactions: 0,
-      impressions: 0,
+      postsOriginal: original,
+      postsReply: reply,
+      postsRetweet: retweet,
+      postsTotal: original + reply + retweet,
+      yapScore: yapScore(original, reply, retweet),
+      interactions:
+        window === "7d" ? j.interactions_7d : j.interactions_30d,
+      impressions: window === "7d" ? j.impressions_7d : j.impressions_30d,
       delta: null,
       rankDelta: null,
-      capturedAt: null,
+      capturedAt: j.metrics_updated_at,
     });
   }
+
+  // Re-rank the combined board so sign-ups with real numbers slot in
+  // where they belong instead of pooling at the bottom.
+  entries.sort(
+    (a, b) =>
+      b.impressions - a.impressions ||
+      b.yapScore - a.yapScore ||
+      b.postsTotal - a.postsTotal
+  );
+  entries.forEach((e, i) => (e.rank = i + 1));
   return entries;
 }
 

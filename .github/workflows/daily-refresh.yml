@@ -1,0 +1,49 @@
+name: Daily refresh
+
+on:
+  schedule:
+    # 05:00 UTC = midnight ET (during daylight saving time)
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - name: Restore working database from committed snapshot
+        run: cp data/deploy-snapshot.db data/yapper.db
+
+      - name: Refresh data from the X API
+        run: npm run refresh
+        env:
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Write scrubbed snapshot
+        run: npm run snapshot
+
+      - name: Commit updated snapshot
+        run: |
+          git config user.name "stanley-refresh-bot"
+          git config user.email "bot@getstanley.ai"
+          git add data/deploy-snapshot.db data/founders.json
+          git diff --cached --quiet || git commit -m "chore: nightly data refresh"
+          git push
+
+      - name: Deploy to production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel link --yes --project indiehackerdash --scope stanwith --token "$VERCEL_TOKEN"
+          npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"

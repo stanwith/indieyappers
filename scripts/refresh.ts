@@ -13,6 +13,7 @@
  *                                   # the last 3 days (engagement matures)
  */
 import { getDb } from "../lib/db";
+import { pgConfigured, pgListJoinedFounders } from "../lib/pgstore";
 import {
   getUsersByHandles,
   getUserTweetsSince,
@@ -25,8 +26,37 @@ import type { FounderRow } from "../lib/types";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REPOLL_DAYS = 3;
 
+/**
+ * Adopt sign-ups from the shared Postgres store into the local pipeline so
+ * the nightly refresh tracks them like any seed founder from then on.
+ */
+async function adoptSignups(db: ReturnType<typeof getDb>) {
+  if (!pgConfigured()) return;
+  const joined = await pgListJoinedFounders();
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO founders (
+      handle, name, product, tier, tier_label, approx_followers, notes,
+      x_user_id, avatar_url, followers, joined_via_x
+    ) VALUES (?, ?, '', 4, '4 - Rising (<10K)', ?, 'Joined via sign in with X', ?, ?, ?, 1)
+  `);
+  let adopted = 0;
+  for (const j of joined) {
+    const res = insert.run(
+      j.handle,
+      j.name,
+      j.followers,
+      j.x_user_id,
+      j.avatar_url,
+      j.followers
+    );
+    adopted += res.changes;
+  }
+  if (adopted > 0) console.log(`Adopted ${adopted} new sign-ups into the pipeline.`);
+}
+
 async function main() {
   const db = getDb();
+  await adoptSignups(db);
   let founders = db.prepare("SELECT * FROM founders").all() as FounderRow[];
 
   const args = process.argv.slice(2);

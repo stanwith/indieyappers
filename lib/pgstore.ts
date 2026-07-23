@@ -6,14 +6,29 @@
  */
 import { Pool } from "pg";
 
-export interface JoinedFounder {
+export interface JoinedMetrics {
+  posts_7d_original: number;
+  posts_7d_reply: number;
+  posts_7d_retweet: number;
+  posts_30d_original: number;
+  posts_30d_reply: number;
+  posts_30d_retweet: number;
+  interactions_7d: number;
+  interactions_30d: number;
+  impressions_7d: number;
+  impressions_30d: number;
+}
+
+export interface JoinedFounder extends JoinedMetrics {
   handle: string;
   name: string;
   x_user_id: string;
   avatar_url: string | null;
+  banner_url: string | null;
   followers: number | null;
   oauth_access_token: string | null;
   oauth_refresh_token: string | null;
+  metrics_updated_at: string | null;
 }
 
 let pool: Pool | null = null;
@@ -50,7 +65,19 @@ async function ensureSchema(): Promise<void> {
          oauth_access_token TEXT,
          oauth_refresh_token TEXT,
          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-       );`
+       );
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS banner_url TEXT;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS posts_7d_original INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS posts_7d_reply INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS posts_7d_retweet INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS posts_30d_original INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS posts_30d_reply INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS posts_30d_retweet INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS interactions_7d INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS interactions_30d INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS impressions_7d INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS impressions_30d INTEGER NOT NULL DEFAULT 0;
+       ALTER TABLE joined_founders ADD COLUMN IF NOT EXISTS metrics_updated_at TIMESTAMPTZ;`
     )
     .then(() => undefined);
   await schemaReady;
@@ -78,7 +105,18 @@ export async function pgSessionHandle(token: string): Promise<string | null> {
   return res.rows[0]?.handle ?? null;
 }
 
-export async function pgUpsertJoinedFounder(f: JoinedFounder) {
+export type JoinedFounderInsert = Pick<
+  JoinedFounder,
+  | "handle"
+  | "name"
+  | "x_user_id"
+  | "avatar_url"
+  | "followers"
+  | "oauth_access_token"
+  | "oauth_refresh_token"
+>;
+
+export async function pgUpsertJoinedFounder(f: JoinedFounderInsert) {
   await ensureSchema();
   await getPool().query(
     `INSERT INTO joined_founders
@@ -98,6 +136,38 @@ export async function pgUpsertJoinedFounder(f: JoinedFounder) {
       f.followers,
       f.oauth_access_token,
       f.oauth_refresh_token,
+    ]
+  );
+}
+
+export async function pgUpdateJoinedMetrics(
+  handle: string,
+  m: JoinedMetrics,
+  bannerUrl: string | null
+) {
+  await ensureSchema();
+  await getPool().query(
+    `UPDATE joined_founders SET
+       posts_7d_original = $2, posts_7d_reply = $3, posts_7d_retweet = $4,
+       posts_30d_original = $5, posts_30d_reply = $6, posts_30d_retweet = $7,
+       interactions_7d = $8, interactions_30d = $9,
+       impressions_7d = $10, impressions_30d = $11,
+       banner_url = COALESCE($12, banner_url),
+       metrics_updated_at = now()
+     WHERE handle = $1`,
+    [
+      handle,
+      m.posts_7d_original,
+      m.posts_7d_reply,
+      m.posts_7d_retweet,
+      m.posts_30d_original,
+      m.posts_30d_reply,
+      m.posts_30d_retweet,
+      m.interactions_7d,
+      m.interactions_30d,
+      m.impressions_7d,
+      m.impressions_30d,
+      bannerUrl,
     ]
   );
 }

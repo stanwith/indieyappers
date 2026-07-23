@@ -7,7 +7,12 @@ import {
   VERIFIER_COOKIE,
   STATE_COOKIE,
 } from "@/lib/auth";
-import { pgConfigured, pgUpsertJoinedFounder } from "@/lib/pgstore";
+import {
+  pgConfigured,
+  pgUpsertJoinedFounder,
+  pgUpdateJoinedMetrics,
+} from "@/lib/pgstore";
+import { computeJoinedMetrics } from "@/lib/enroll";
 
 interface XMe {
   data?: {
@@ -98,6 +103,19 @@ export async function GET(request: Request) {
       oauth_access_token: access_token,
       oauth_refresh_token: refresh_token ?? null,
     });
+
+    // Immediate placement: pull their last 30 days so they rank accurately
+    // right away instead of sitting at zero until the nightly refresh.
+    // Only needed for accounts that aren't already tracked in the seed data.
+    if (!existing) {
+      try {
+        const metrics = await computeJoinedMetrics(me.id);
+        await pgUpdateJoinedMetrics(handle, metrics, null);
+      } catch (err) {
+        console.error(`instant metrics fetch failed for @${handle}:`, err);
+      }
+    }
+
     const token = await createSession(handle);
     const res = NextResponse.redirect(new URL("/?auth=ok", url.origin));
     res.cookies.set(SESSION_COOKIE, token, {
