@@ -297,7 +297,9 @@ function CameraRig({ view, poster }: { view: View; poster: number }) {
           : POSES.room(portrait),
     [view, poster, portrait, size],
   )
-  useRoomPan(gl.domElement, portrait)
+  // room only: the listeners used to stay live in poster view, so a poster swipe would bank into
+  // pan.x and you'd walk back into a room already shoved off to one side
+  useRoomPan(gl.domElement, portrait && view === 'room')
   const target = useMemo(() => new THREE.Vector3(), [])
   const lookTo = useMemo(() => new THREE.Vector3(), [])
   const look = useRef(new THREE.Vector3(0, 1.14, 0))

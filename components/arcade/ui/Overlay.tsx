@@ -219,14 +219,16 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
                 FIND
               </button>
             )}
-            <button aria-label="back" onClick={() => send({ t: 'BACK' })}>
-              B
-            </button>
+            {/* A left, B right — matches the physical cabinet's button order (SELECT at x=0.12,
+                BACK at x=0.27 in FrontalScene), not the Nintendo one */}
             <button
               aria-label="select"
               onClick={() => send({ t: state.phase === 'attract' ? 'COIN' : 'SELECT' })}
             >
               A
+            </button>
+            <button aria-label="back" onClick={() => send({ t: 'BACK' })}>
+              B
             </button>
           </div>
         </div>
