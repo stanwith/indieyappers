@@ -109,16 +109,16 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
   const [copied, setCopied] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // only the query changes this list; don't re-diff 100 <li>s per MOVE
+  // only the window/query change this list; don't re-diff 100 <li>s per MOVE
   const srRows = useMemo(
     () =>
-      getFiltered('7d', state.query).map((e) => (
+      getFiltered(state.win, state.query).map((e) => (
         <li key={e.handle}>
           {e.rank}. {e.name} (@{e.handle}) — {e.companyName}
           {e.blurb ? ` — ${e.blurb}` : ''}
         </li>
       )),
-    [state.query],
+    [state.win, state.query],
   )
 
   // touch search: phones have no '/' key and only show a keyboard for a real
