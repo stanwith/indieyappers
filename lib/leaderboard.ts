@@ -5,6 +5,7 @@ import {
   pgListJoinedFounders,
 } from "./pgstore";
 import { companySlug } from "./slug";
+import blurbsByHandle from "../data/blurbs.json";
 import {
   yapScore,
   type CompanyDetail,
@@ -17,6 +18,21 @@ import {
 } from "./types";
 
 type JoinedRow = FounderRow & Partial<SnapshotRow> & { captured_at?: string };
+
+/**
+ * Hand-written one-liners live in data/blurbs.json rather than the database:
+ * the db is rebuilt nightly and regenerated from the spreadsheet, this isn't.
+ */
+const BLURBS = new Map(
+  Object.entries(blurbsByHandle as Record<string, string>).map(([h, b]) => [
+    h.toLowerCase(),
+    b,
+  ])
+);
+
+function blurbFor(handle: string): string | null {
+  return BLURBS.get(handle.toLowerCase()) ?? null;
+}
 
 /** First product name in the seed's "Product / known for" field. */
 function primaryProduct(product: string): string {
@@ -68,6 +84,7 @@ export function getLeaderboard(window: TimeWindow): LeaderboardEntry[] {
       tier: r.tier,
       tierLabel: r.tier_label,
       avatarUrl: r.avatar_url ?? `https://unavatar.io/twitter/${r.handle}`,
+      blurb: blurbFor(r.handle),
       companyName: primaryProduct(r.product) || null,
       companyDomain: r.company_domain ?? null,
       companyLogo: r.company_logo ?? null,
@@ -173,6 +190,7 @@ export async function getLeaderboardWithSignups(
       tier: 4,
       tierLabel: "4 - Rising (<10K)",
       avatarUrl: j.avatar_url ?? `https://unavatar.io/twitter/${j.handle}`,
+      blurb: blurbFor(j.handle),
       companyName: j.company_name ?? null,
       companyDomain: j.company_domain ?? null,
       companyLogo: j.company_logo ?? null,
@@ -234,6 +252,7 @@ export async function getCompanyDetail(
       logo: joined?.company_logo ?? null,
       description:
         joined?.company_desc ??
+        top.blurb ??
         `${top.name} joined the leaderboard with Sign in with X.`,
       bannerUrl: joined?.banner_url ?? null,
       members,
@@ -250,7 +269,7 @@ export async function getCompanyDetail(
     domain: top.companyDomain,
     logo: top.companyLogo,
     description: isPersonPage
-      ? `${top.name} joined the leaderboard with Sign in with X.`
+      ? (top.blurb ?? `${top.name} joined the leaderboard with Sign in with X.`)
       : (founder.company_desc ??
         `${top.companyName} is what @${top.handle} ships when they're not posting. ${founder.notes}`),
     bannerUrl: founder.banner_url,

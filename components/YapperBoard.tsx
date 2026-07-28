@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { LeaderboardEntry, TimeWindow } from "@/lib/types";
 import { formatCompact, formatNumber } from "@/lib/format";
+import { shareSite, openPostOnX, loudestPostText } from "@/lib/share";
 import { Avatar } from "./Avatar";
 import { WindowToggle } from "./WindowToggle";
 
@@ -41,23 +42,8 @@ export function YapperBoard({
   const pageRows = rows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   const copyLink = () => navigator.clipboard.writeText(globalThis.location.href);
-  const share = () => {
-    if (navigator.share) {
-      navigator.share({ title: "Indie Hot 100", url: globalThis.location.href });
-    } else {
-      copyLink();
-    }
-  };
-  const postOnX = () => {
-    const top = entries[0];
-    const text = top
-      ? `The loudest builder on the indie timeline right now is @${top.handle}. See the whole board:`
-      : "Who's building the loudest on the indie timeline?";
-    globalThis.open(
-      `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(globalThis.location.origin)}`,
-      "_blank"
-    );
-  };
+  const share = () => shareSite();
+  const postOnX = () => openPostOnX(loudestPostText(entries[0]));
 
   return (
     <div className="flex flex-col gap-5">
@@ -193,7 +179,7 @@ function PeopleTable({
           return (
           <tr
             key={e.handle}
-            onClick={() => router.push(`/company/${e.companySlug}`)}
+            onClick={() => router.push(`/v1/company/${e.companySlug}`)}
             className={`cursor-pointer border-b border-border-subtle last:border-b-0 hover:bg-[var(--surface-hover-ink)] transition-colors duration-150 ${
               isMe ? "bg-[var(--iris-faint)]" : ""
             }`}
@@ -226,6 +212,11 @@ function PeopleTable({
                   <span className="font-code text-[11px] text-text-tertiary truncate">
                     @{e.handle}
                   </span>
+                  {e.blurb && (
+                    <span className="hidden lg:block max-w-[34ch] truncate text-[11.5px] italic leading-tight text-text-secondary">
+                      {e.blurb}
+                    </span>
+                  )}
                 </span>
               </span>
             </td>

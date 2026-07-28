@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
+import { STANLEY_LINK } from "@/lib/links";
 import { Avatar } from "./Avatar";
 
 export async function TopNav() {
@@ -44,7 +45,7 @@ export async function TopNav() {
             </div>
           )}
           <a
-            href="https://x.getstanley.ai/e/indie-hacker-x-stanley"
+            href={STANLEY_LINK}
             target="_blank"
             rel="noopener noreferrer"
             className="stanley-brand-action inline-flex items-center gap-2 px-3.5 py-1.5 text-[13px] font-medium"
