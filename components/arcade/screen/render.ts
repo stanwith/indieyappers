@@ -481,5 +481,8 @@ function drawFooter(ctx: CanvasRenderingContext2D, text: string, _t: number) {
   ctx.fillStyle = AMBER_FAINT
   ctx.fillText(text, 320, 452)
   ctx.textAlign = 'left'
-  ctx.fillText('DATA ' + getCapturedAt().slice(0, 10), 24, 452)
+  // Challenge boards have no snapshot date to show, and a bare "DATA" reads
+  // like a broken label — draw the stamp only when there is one.
+  const captured = getCapturedAt().slice(0, 10)
+  if (captured) ctx.fillText('DATA ' + captured, 24, 452)
 }
