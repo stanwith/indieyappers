@@ -230,6 +230,11 @@ export default async function CompanyPage({
                           <span className="truncate font-code text-[11px] text-text-tertiary">
                             @{m.handle}
                           </span>
+                          {m.blurb && (
+                            <span className="mt-0.5 text-[11.5px] italic leading-snug text-text-secondary">
+                              {m.blurb}
+                            </span>
+                          )}
                         </span>
                       </a>
                     </td>

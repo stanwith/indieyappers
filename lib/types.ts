@@ -56,6 +56,8 @@ export interface LeaderboardEntry {
   tier: number;
   tierLabel: string;
   avatarUrl: string | null;
+  /** One-line human description from data/blurbs.json, if we have one. */
+  blurb: string | null;
   companyName: string | null;
   companyDomain: string | null;
   companyLogo: string | null;

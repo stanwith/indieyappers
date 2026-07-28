@@ -226,6 +226,11 @@ function PeopleTable({
                   <span className="font-code text-[11px] text-text-tertiary truncate">
                     @{e.handle}
                   </span>
+                  {e.blurb && (
+                    <span className="hidden lg:block max-w-[34ch] truncate text-[11.5px] italic leading-tight text-text-secondary">
+                      {e.blurb}
+                    </span>
+                  )}
                 </span>
               </span>
             </td>
