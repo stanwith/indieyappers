@@ -38,9 +38,26 @@ export async function getThreadsBoard(
   const res = await fetch(
     `${STANLEY_BASE_URL}/api/public/challenges/${encodeURIComponent(slug)}`
   );
-  if (!res.ok) return null;
+  // Only a 404 means "no such challenge". Everything else — 5xx, a rate
+  // limit, a network error — has to throw: the page turns null into
+  // notFound(), and at 60s ISR that would cache a false 404 over a live
+  // challenge for the whole window. Better to surface the error and retry.
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(
+      `Stanley challenge fetch failed for "${slug}": ${res.status}`
+    );
+  }
   const body = (await res.json()) as ApiResponse;
-  const entries = body.rows.map(toEntry);
+  // A row with no handle cannot be labelled or linked (profileUrl would emit
+  // a bare threads.net/@), so drop it before ranking rather than let a blank
+  // but selectable row occupy a rank number. Stanley's leaderboard treats
+  // handle as nullable because it reads whichever platform_accounts row won
+  // its identity tiebreak, and that row may not carry one.
+  const ranked = body.rows.filter(
+    (r): r is ApiRow & { handle: string } => Boolean(r.handle)
+  );
+  const entries = ranked.map(toEntry);
 
   return {
     challenge: body.challenge,
@@ -65,13 +82,12 @@ export async function getThreadsBoard(
   };
 }
 
-function toEntry(r: ApiRow, i: number): Entry {
-  const handle = r.handle ?? "";
+function toEntry(r: ApiRow & { handle: string }, i: number): Entry {
   return {
     // Stanley returns the rows already ranked by total views.
     rank: i + 1,
-    handle,
-    name: r.displayName ?? handle,
+    handle: r.handle,
+    name: r.displayName ?? r.handle,
     avatar: r.avatarUrl,
     postsTotal: r.postCount,
     impressions: r.totalViews,
