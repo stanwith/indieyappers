@@ -198,8 +198,6 @@ async function main() {
       failures.set(f.handle, message);
       continue;
     }
-    markFetched.run(now, f.handle);
-
     for (const t of tweets) {
       upsertTweet.run(
         t.id,
@@ -214,6 +212,9 @@ async function main() {
         t.public_metrics?.impression_count ?? 0
       );
     }
+    // After the writes, not before: a failed insert would otherwise leave the
+    // handle marked fresh with tweets missing.
+    markFetched.run(now, f.handle);
 
     fetched += tweets.length;
     done++;
