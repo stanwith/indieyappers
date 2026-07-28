@@ -1,4 +1,5 @@
 import type { Platform } from '@/lib/links'
+import { SITE_TITLE } from '@/lib/share'
 
 export type StatWindow = '7d' | '30d'
 
@@ -35,7 +36,7 @@ export interface ArcadeData {
   platform: Platform
   /** Where "SEE MY RANK" and the J key go — a Stanley event landing page. */
   seeMyRankUrl: string
-  /** Human name of this board, used in share copy. */
+  /** Human name of this board — the attract screen's title and the share copy. */
   boardTitle: string
 }
 
@@ -48,7 +49,9 @@ let data: ArcadeData = {
   user: null,
   platform: 'x',
   seeMyRankUrl: '',
-  boardTitle: '',
+  // The default board is the X one, so default to its name rather than to empty — otherwise
+  // every consumer needs its own `|| SITE_TITLE` for a state that only exists pre-hydration.
+  boardTitle: SITE_TITLE,
 }
 
 export function setArcadeData(d: ArcadeData) {

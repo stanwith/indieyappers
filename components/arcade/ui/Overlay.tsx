@@ -135,7 +135,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
     shareSite(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    }, getBoardTitle() || undefined)
+    }, getBoardTitle())
   const postOnX = () => {
     const entries = getLeaderboard('7d')
     const user = getArcadeUser()
@@ -148,7 +148,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
       ? mine.rank === 1
         ? `I'm the loudest builder on the indie timeline right now. Come take the top spot:`
         : `I'm #${mine.rank} of ${entries.length} on the indie yap leaderboard. The loudest right now is @${entries[0].handle}. See the whole board:`
-      : loudestPostText(entries[0], getBoardTitle() || undefined)
+      : loudestPostText(entries[0], getBoardTitle())
     // A challenge board lives on a sub-path, so share its own URL, not the root.
     openPostOnX(text, getPlatform() === 'threads' ? globalThis.location.href : undefined)
   }
