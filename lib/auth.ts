@@ -134,5 +134,6 @@ function joinedToFounderRow(j: {
     company_logo: null,
     company_desc: null,
     banner_url: null,
+    tweets_fetched_at: null,
   };
 }

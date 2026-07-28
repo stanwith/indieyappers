@@ -12,6 +12,8 @@ export interface XUser {
   };
   profile_image_url?: string;
   profile_banner_url?: string;
+  /** Locked account: the timeline endpoint answers 200 with an Authorization Error. */
+  protected?: boolean;
   public_metrics?: {
     followers_count: number;
     following_count: number;
@@ -68,7 +70,7 @@ export async function getUsersByHandles(handles: string[]): Promise<XUser[]> {
     const batch = handles.slice(i, i + 100);
     const url =
       `${API_BASE}/users/by?usernames=${batch.join(",")}` +
-      `&user.fields=profile_image_url,profile_banner_url,public_metrics,description,url,entities`;
+      `&user.fields=profile_image_url,profile_banner_url,public_metrics,description,url,entities,protected`;
     const res = await xFetch(url);
     if (!res.ok) {
       throw new Error(`users/by failed: ${res.status} ${await res.text()}`);
@@ -110,8 +112,18 @@ export async function getUserTweetsSince(
     }
     const body = (await res.json()) as {
       data?: XTweet[];
+      errors?: { title?: string; detail?: string }[];
       meta?: { next_token?: string };
     };
+    // A protected account answers 200 with an `errors` array and no `data`.
+    // Swallowing that made it indistinguishable from "posted nothing", so the
+    // account published a fake zero and sank to the bottom of the board.
+    if (!body.data && body.errors?.length) {
+      const e = body.errors[0];
+      throw new Error(
+        `users/${userId}/tweets: ${e.title ?? "error"} - ${e.detail ?? "unknown"}`
+      );
+    }
     tweets.push(...(body.data ?? []));
     paginationToken = body.meta?.next_token;
   } while (paginationToken);

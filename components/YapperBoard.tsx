@@ -187,12 +187,13 @@ function PeopleTable({
             <td className="py-3 pl-5">
               <span
                 className={`text-[13px] tabular-nums ${
-                  e.rank <= 3
+                  e.rank >= 1 && e.rank <= 3
                     ? "font-semibold text-[var(--iris-700)]"
                     : "text-text-tertiary"
                 }`}
               >
-                {e.rank}
+                {/* Unranked: we could not poll this account, so it has no standing. */}
+                {e.rank || "—"}
               </span>
             </td>
             <td className="py-3">
@@ -227,10 +228,10 @@ function PeopleTable({
               <RankDelta value={e.rankDelta} />
             </td>
             <td className="py-3 text-right font-code text-[12px] text-text-secondary tabular-nums">
-              {formatCompact(e.interactions)}
+              {formatCompact(e.stale ? null : e.interactions)}
             </td>
             <td className="py-3 text-right text-[13px] font-semibold text-text tabular-nums">
-              {formatCompact(e.impressions)}
+              {formatCompact(e.stale ? null : e.impressions)}
             </td>
             <td className="py-3 pr-5 text-right">
               <a

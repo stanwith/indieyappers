@@ -83,6 +83,36 @@ export default function ArcadeApp({ data, auth }: ArcadeProps) {
     play('blip')
   }, [])
 
+  // Thumb-browse the wall. Listens on window rather than the canvas so it needs no wiring through
+  // FrontalScene, and fires mid-drag (not on release) so it tracks like a carousel. Tapping a
+  // poster's art to walk to it still works: Framed's own `e.delta > 8` guard drops the click that
+  // ends a drag. pointerType is the mobile gate — a mouse drag here would fight the room sway.
+  useEffect(() => {
+    if (view !== 'poster') return
+    let x0 = 0
+    let y0 = 0
+    let fired = true
+    const down = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return
+      x0 = e.clientX
+      y0 = e.clientY
+      fired = false
+    }
+    const move = (e: PointerEvent) => {
+      if (fired) return
+      const dx = e.clientX - x0
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(e.clientY - y0)) return
+      fired = true
+      browsePoster(dx < 0 ? 1 : -1) // swipe left = next, the way a carousel moves
+    }
+    window.addEventListener('pointerdown', down)
+    window.addEventListener('pointermove', move)
+    return () => {
+      window.removeEventListener('pointerdown', down)
+      window.removeEventListener('pointermove', move)
+    }
+  }, [view, browsePoster])
+
   // boot timer starts once the scene is up
   useEffect(() => {
     if (!ready) return

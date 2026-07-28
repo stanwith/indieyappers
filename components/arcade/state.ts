@@ -29,10 +29,22 @@ export const feedback: { handler?: (a: Action) => void } = {}
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
+// Follow the person, not the row. Ranks differ between the two windows, so carrying the index
+// across would silently swap who you're highlighting — and on the detail screen, whose profile
+// you're reading. Falls back to the clamped index when they aren't in the other window at all
+// (a sign-up with no 30d activity yet). Exact handle compare: both windows are built from the
+// same founders rows by toEntry, so the casing matches.
+function toggleWindow(s: ArcadeState): ArcadeState {
+  const win = s.win === '7d' ? '30d' : '7d'
+  const here = getFiltered(s.win, s.query)[s.cursor]
+  const there = getFiltered(win, s.query)
+  const i = here ? there.findIndex((e) => e.handle === here.handle) : -1
+  return { ...s, win, cursor: i >= 0 ? i : clamp(s.cursor, 0, Math.max(0, there.length - 1)) }
+}
+
 // Pure. Side effects (sound, window.open) live in App's dispatch wrapper.
 export function reduce(s: ArcadeState, a: Action): ArcadeState {
   const count = getFiltered(s.win, s.query).length
-  const otherWin = s.win === '7d' ? '30d' : '7d'
   switch (s.phase) {
     case 'boot':
       return a.t === 'BOOT_DONE' ? { ...s, phase: 'attract' } : s
@@ -49,7 +61,7 @@ export function reduce(s: ArcadeState, a: Action): ArcadeState {
           if (s.query !== null) return { ...s, query: null, cursor: 0 }
           return { ...s, phase: 'attract', cursor: 0 }
         case 'TOGGLE_WINDOW':
-          return { ...s, win: otherWin, cursor: clamp(s.cursor, 0, Math.max(0, getFiltered(otherWin, s.query).length - 1)) }
+          return toggleWindow(s)
         case 'SEARCH':
           return { ...s, query: a.q, cursor: 0 }
         default:
@@ -62,7 +74,7 @@ export function reduce(s: ArcadeState, a: Action): ArcadeState {
         case 'BACK':
           return { ...s, phase: 'leaderboard' }
         case 'TOGGLE_WINDOW':
-          return { ...s, win: otherWin, cursor: clamp(s.cursor, 0, Math.max(0, getFiltered(otherWin, s.query).length - 1)) }
+          return toggleWindow(s)
         default:
           return s
       }

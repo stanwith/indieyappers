@@ -17,8 +17,10 @@ const PURPLE_LIGHT = '#c3bcff'
 const PIXEL = (px: number) => `${px}px "Press Start 2P"`
 const TERM = (px: number) => `${px}px "VT323"`
 
-const fmt = (n: number): string =>
-  n >= 1e6 ? (n / 1e6).toFixed(1) + 'M'
+// null means "we could not poll this account", not zero — see LeaderboardEntry.stale
+const fmt = (n: number | null): string =>
+  n === null ? '—'
+  : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M'
   : n >= 1e4 ? Math.round(n / 1e3) + 'K'
   : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K'
   : String(Math.round(n))
@@ -191,9 +193,13 @@ function drawAttract(ctx: CanvasRenderingContext2D, t: number) {
 }
 
 // --- leaderboard ---
-const VISIBLE_ROWS = 11
+// 10 rows, not 11: the 11th used to end at y=412 with only 18px to the footer text, and the
+// pinned "my rank" row needs a whole row of clearance. Everything else here derives from it.
+const VISIBLE_ROWS = 10
 const ROW_H = 28
 const LIST_TOP = 126
+const PIN_RULE_Y = 394
+const PIN_ROW_Y = 418
 
 function drawHeader(ctx: CanvasRenderingContext2D, s: ArcadeState, title: string) {
   ctx.font = PIXEL(14)
@@ -215,6 +221,55 @@ function drawHeader(ctx: CanvasRenderingContext2D, s: ArcadeState, title: string
   }
   ctx.fillStyle = AMBER_FAINT
   ctx.fillRect(24, 58, SCREEN_W - 48, 2)
+}
+
+// One board row. Shared by the scrolling list and the pinned "my rank" row, which is the
+// only reason it's a function — the pin has to be visually identical to the row it stands in for.
+function drawRow(ctx: CanvasRenderingContext2D, e: Entry, y: number, selected: boolean, isMe: boolean) {
+  if (selected) {
+    ctx.fillStyle = PURPLE
+    ctx.fillRect(16, y - 20, SCREEN_W - 32, ROW_H - 2)
+  } else if (isMe) {
+    // inset 1px from the selection fill so the 2px stroke stays inside the row footprint
+    ctx.strokeStyle = PURPLE
+    ctx.lineWidth = 2
+    ctx.strokeRect(17, y - 19, SCREEN_W - 34, ROW_H - 4)
+  }
+  // rank, not list position: under a search filter the top three *results* aren't the top three
+  const fg = selected ? '#ffffff' : isMe ? PURPLE_LIGHT : e.rank >= 1 && e.rank <= 3 ? WHITE : AMBER
+  ctx.fillStyle = fg
+  ctx.font = TERM(24)
+  ctx.textAlign = 'right'
+  ctx.fillText(e.rank ? String(e.rank) : '—', 64, y)
+  // rank delta glyph
+  if (e.rankDelta !== 0) {
+    ctx.font = TERM(20)
+    ctx.fillStyle = selected ? '#ffffff' : e.rankDelta > 0 ? WHITE : AMBER_DIM
+    ctx.textAlign = 'left'
+    ctx.fillText(e.rankDelta > 0 ? '^' + e.rankDelta : 'v' + -e.rankDelta, 76, y)
+  }
+  // Builder cell: name, then a dimmer, smaller @handle right after it — no handle column, the
+  // two belong together. Clipped at 540 rather than character-counted, because IMPRESSIONS is
+  // right-aligned at 616 and its widest value starts around there.
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(130, y - 20, 410, ROW_H - 2)
+  ctx.clip()
+  ctx.font = TERM(24)
+  ctx.fillStyle = fg
+  ctx.textAlign = 'left'
+  const name = (selected ? '> ' : '') + e.name.toUpperCase().slice(0, 20)
+  ctx.fillText(name, 130, y)
+  const nameW = ctx.measureText(name).width // measure in TERM(24), before switching fonts
+  ctx.font = TERM(20)
+  ctx.fillStyle = selected ? PURPLE_LIGHT : AMBER_DIM
+  ctx.fillText('@' + e.handle, 130 + nameW + 10, y)
+  ctx.restore()
+
+  ctx.font = TERM(24)
+  ctx.fillStyle = fg
+  ctx.textAlign = 'right'
+  ctx.fillText(fmt(e.stale ? null : e.impressions), 616, y)
 }
 
 function drawLeaderboard(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
@@ -249,35 +304,17 @@ function drawLeaderboard(ctx: CanvasRenderingContext2D, s: ArcadeState, t: numbe
     preload(e.avatar)
     const y = LIST_TOP + (i - first) * ROW_H - offset
     if (y < LIST_TOP - ROW_H || y > LIST_TOP + (VISIBLE_ROWS - 1) * ROW_H + 8) continue
-    const selected = i === s.cursor
-    const isMe = e.handle.toLowerCase() === me
-    if (selected) {
-      ctx.fillStyle = PURPLE
-      ctx.fillRect(16, y - 20, SCREEN_W - 32, ROW_H - 2)
-    } else if (isMe) {
-      // inset 1px from the selection fill so the 2px stroke stays inside the row footprint
-      ctx.strokeStyle = PURPLE
-      ctx.lineWidth = 2
-      ctx.strokeRect(17, y - 19, SCREEN_W - 34, ROW_H - 4)
-    }
-    const fg = selected ? '#ffffff' : isMe ? PURPLE_LIGHT : i < 3 ? WHITE : AMBER
-    ctx.fillStyle = fg
-    ctx.font = TERM(24)
-    ctx.textAlign = 'right'
-    ctx.fillText(String(e.rank), 64, y)
-    // rank delta glyph
-    if (e.rankDelta !== 0) {
-      ctx.font = TERM(20)
-      ctx.fillStyle = selected ? '#ffffff' : e.rankDelta > 0 ? WHITE : AMBER_DIM
-      ctx.textAlign = 'left'
-      ctx.fillText(e.rankDelta > 0 ? '^' + e.rankDelta : 'v' + -e.rankDelta, 76, y)
-    }
-    ctx.font = TERM(24)
-    ctx.fillStyle = fg
-    ctx.textAlign = 'left'
-    ctx.fillText((selected ? '> ' : '') + e.name.toUpperCase().slice(0, 24), 130, y)
-    ctx.textAlign = 'right'
-    ctx.fillText(fmt(e.impressions), 616, y)
+    drawRow(ctx, e, y, i === s.cursor, e.handle.toLowerCase() === me)
+  }
+
+  // Your own row, parked above the footer once you've scrolled away from it. The bounds test uses
+  // the raw lerped scrollRow, so it's exact at rest. getFiltered means a query that excludes you
+  // drops the pin too — pinning a row that isn't in the list you're reading would be a lie.
+  const myIdx = me ? entries.findIndex((e) => e.handle.toLowerCase() === me) : -1
+  if (myIdx >= 0 && (myIdx < scrollRow || myIdx > scrollRow + VISIBLE_ROWS - 1)) {
+    ctx.fillStyle = AMBER_FAINT
+    ctx.fillRect(24, PIN_RULE_Y, SCREEN_W - 48, 2)
+    drawRow(ctx, entries[myIdx], PIN_ROW_Y, false, true)
   }
 
   if (entries.length === 0) {
@@ -307,7 +344,7 @@ function drawDetail(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
   const entries = getFiltered(s.win, s.query)
   const e: Entry | undefined = entries[Math.min(s.cursor, entries.length - 1)]
   if (!e) return
-  drawHeader(ctx, s, `RANK #${e.rank}`)
+  drawHeader(ctx, s, e.rank ? `RANK #${e.rank}` : 'UNRANKED')
   preload(entries[s.cursor + 1]?.avatar ?? null)
   preload(entries[s.cursor - 1]?.avatar ?? null)
 
@@ -348,12 +385,14 @@ function drawDetail(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
   }
 
   // stat grid
+  // Followers comes from the profile lookup, so it survives an unpollable timeline.
+  const win = (n: number) => (e.stale ? null : n);
   const stats: Array<[string, string]> = [
     ['FOLLOWERS', fmt(e.followers)],
-    ['POSTS ' + s.win.toUpperCase(), fmt(e.postsTotal)],
-    ['YAP SCORE', fmt(e.yapScore)],
-    ['INTERACTIONS', fmt(e.interactions)],
-    ['IMPRESSIONS', fmt(e.impressions)],
+    ['POSTS ' + s.win.toUpperCase(), fmt(win(e.postsTotal))],
+    ['YAP SCORE', fmt(win(e.yapScore))],
+    ['INTERACTIONS', fmt(win(e.interactions))],
+    ['IMPRESSIONS', fmt(win(e.impressions))],
     ['TREND', e.rankDelta === 0 ? '=' : e.rankDelta > 0 ? `UP ${e.rankDelta}` : `DOWN ${-e.rankDelta}`],
   ]
   const gx = [40, 250, 460]

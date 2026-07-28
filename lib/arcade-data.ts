@@ -33,6 +33,7 @@ function toEntry(e: LeaderboardEntry): Entry {
     impressions: e.impressions,
     rankDelta: e.rankDelta ?? 0,
     avatar: localAvatars.get(e.handle.toLowerCase()) ?? e.avatarUrl,
+    stale: e.stale,
   };
 }
 

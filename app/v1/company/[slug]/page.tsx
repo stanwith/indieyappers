@@ -201,7 +201,7 @@ export default async function CompanyPage({
                             : "text-text-tertiary"
                         }`}
                       >
-                        {m.rank}
+                        {m.rank || "—"}
                       </span>
                     </td>
                     <td className="py-3">
@@ -242,10 +242,10 @@ export default async function CompanyPage({
                       {formatCompact(m.followers)}
                     </td>
                     <td className="py-3 text-right text-[13px] font-semibold tabular-nums text-text">
-                      {formatNumber(m.postsTotal)}
+                      {formatNumber(m.stale ? null : m.postsTotal)}
                     </td>
                     <td className="py-3 pr-5 text-right font-code text-[11px] tabular-nums text-text-secondary">
-                      {formatNumber(m.yapScore)}
+                      {formatNumber(m.stale ? null : m.yapScore)}
                     </td>
                   </tr>
                 ))}

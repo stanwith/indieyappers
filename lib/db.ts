@@ -139,6 +139,15 @@ function migrate(db: Database.Database) {
     }
   }
 
+  // When the refresh last *successfully* fetched this handle's posts. Without
+  // it a failed fetch is indistinguishable from "posted nothing", and the
+  // resulting zero gets published and ranked as if it were real.
+  try {
+    db.exec("ALTER TABLE founders ADD COLUMN tweets_fetched_at TEXT");
+  } catch {
+    /* column already exists */
+  }
+
   // Engagement metrics per snapshot, added idempotently.
   for (const col of [
     "interactions_7d INTEGER NOT NULL DEFAULT 0",
@@ -169,8 +178,25 @@ function seedFounders(db: Database.Database) {
       approx_followers = excluded.approx_followers,
       notes = excluded.notes
   `);
+  // Curated founders dropped from the spreadsheet (or corrected to a different
+  // handle) have to leave the database too, or the old row lingers forever with
+  // its stale numbers. Sign-ups are exempt: they were never in the seed.
+  // Dependents are deleted explicitly because foreign keys aren't enforced.
+  const placeholders = seed.map(() => "?").join(",");
+  const handles = seed.map((row) => row.handle);
   const tx = db.transaction((rows: SeedFounder[]) => {
     for (const row of rows) upsert.run(row);
+    for (const table of ["tweets", "activity_snapshots", "top_tweets"]) {
+      db.prepare(
+        `DELETE FROM ${table} WHERE handle IN (
+           SELECT handle FROM founders
+           WHERE joined_via_x = 0 AND handle NOT IN (${placeholders}))`
+      ).run(...handles);
+    }
+    db.prepare(
+      `DELETE FROM founders
+       WHERE joined_via_x = 0 AND handle NOT IN (${placeholders})`
+    ).run(...handles);
   });
   tx(seed);
 }

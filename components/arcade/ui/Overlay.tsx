@@ -114,7 +114,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
     () =>
       getFiltered(state.win, state.query).map((e) => (
         <li key={e.handle}>
-          {e.rank}. {e.name} (@{e.handle}) — {e.companyName}
+          {e.rank ? `${e.rank}.` : 'Unranked, not measurable:'} {e.name} (@{e.handle}) — {e.companyName}
           {e.blurb ? ` — ${e.blurb}` : ''}
         </li>
       )),
@@ -219,14 +219,16 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
                 FIND
               </button>
             )}
-            <button aria-label="back" onClick={() => send({ t: 'BACK' })}>
-              B
-            </button>
+            {/* A left, B right — matches the physical cabinet's button order (SELECT at x=0.12,
+                BACK at x=0.27 in FrontalScene), not the Nintendo one */}
             <button
               aria-label="select"
               onClick={() => send({ t: state.phase === 'attract' ? 'COIN' : 'SELECT' })}
             >
               A
+            </button>
+            <button aria-label="back" onClick={() => send({ t: 'BACK' })}>
+              B
             </button>
           </div>
         </div>

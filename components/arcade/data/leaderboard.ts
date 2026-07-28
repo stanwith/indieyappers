@@ -14,6 +14,8 @@ export interface Entry {
   impressions: number
   rankDelta: number
   avatar: string | null
+  /** Could not be polled, so rank is 0 and the figures draw as "—". */
+  stale: boolean
 }
 
 export interface ArcadeUser {

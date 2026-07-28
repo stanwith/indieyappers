@@ -27,6 +27,24 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const REPOLL_DAYS = 3;
 
 /**
+ * A transient 5xx or socket timeout used to freeze a handle's data for the
+ * rest of the week: the error was warned about and skipped, but the snapshot
+ * was still written, so the founder silently decayed to zero impressions as
+ * the 7d window slid past their last fetched post. One retry covers it.
+ */
+async function fetchTweetsWithRetry(
+  userId: string,
+  opts: { startTime?: Date; sinceId?: string }
+) {
+  try {
+    return await getUserTweetsSince(userId, opts);
+  } catch {
+    await new Promise((r) => setTimeout(r, 2_000));
+    return await getUserTweetsSince(userId, opts);
+  }
+}
+
+/**
  * Adopt sign-ups from the shared Postgres store into the local pipeline so
  * the nightly refresh tracks them like any seed founder from then on.
  */
@@ -125,26 +143,48 @@ async function main() {
       likes, retweets, replies, quotes, impressions
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  const latestTweetId = db.prepare(
-    `SELECT tweet_id FROM tweets WHERE handle = ?
+  const latestTweet = db.prepare(
+    `SELECT tweet_id, created_at FROM tweets WHERE handle = ?
      ORDER BY LENGTH(tweet_id) DESC, tweet_id DESC LIMIT 1`
+  );
+  const markFetched = db.prepare(
+    "UPDATE founders SET tweets_fetched_at = ? WHERE handle = ?"
   );
 
   const start30 = new Date(Date.now() - 30 * DAY_MS);
+  const cutoff7 = new Date(Date.now() - 7 * DAY_MS).toISOString();
+
+  /** Handles we could not poll this run — reported at the end. */
+  const failures = new Map<string, string>();
+  for (const f of founders) {
+    const u = byHandle.get(f.handle.toLowerCase());
+    if (!u) failures.set(f.handle, "could not resolve (renamed/suspended?)");
+    // Locked accounts can never be polled, so don't spend a request finding
+    // out every night — users/by already told us.
+    else if (u.protected) failures.set(f.handle, "protected account");
+  }
 
   let done = 0;
   let fetched = 0;
   for (const f of founders) {
     const u = byHandle.get(f.handle.toLowerCase());
-    if (!u) continue;
+    if (!u || u.protected) continue;
 
-    const since = latestTweetId.get(f.handle) as { tweet_id: string } | undefined;
+    const latest = latestTweet.get(f.handle) as
+      | { tweet_id: string; created_at: string }
+      | undefined;
+    // A watermark outside the 7d window makes the incremental fetch worthless
+    // (there is nothing to fill the window with), so re-scan 30d instead. Also
+    // self-heals a watermark whose tweet was deleted, which would wedge
+    // since_id forever.
+    const window =
+      latest && latest.created_at >= cutoff7
+        ? { sinceId: latest.tweet_id }
+        : { startTime: start30 };
+
     let tweets;
     try {
-      tweets = await getUserTweetsSince(
-        u.id,
-        since ? { sinceId: since.tweet_id } : { startTime: start30 }
-      );
+      tweets = await fetchTweetsWithRetry(u.id, window);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("credits-depleted") || message.includes("402")) {
@@ -155,9 +195,9 @@ async function main() {
         break;
       }
       console.warn(`  @${f.handle} tweets fetch failed, skipping:`, message);
+      failures.set(f.handle, message);
       continue;
     }
-
     for (const t of tweets) {
       upsertTweet.run(
         t.id,
@@ -172,6 +212,9 @@ async function main() {
         t.public_metrics?.impression_count ?? 0
       );
     }
+    // After the writes, not before: a failed insert would otherwise leave the
+    // handle marked fresh with tweets missing.
+    markFetched.run(now, f.handle);
 
     fetched += tweets.length;
     done++;
@@ -236,7 +279,6 @@ async function main() {
     LIMIT 3
   `);
 
-  const cutoff7 = new Date(Date.now() - 7 * DAY_MS).toISOString();
   const cutoff30 = start30.toISOString();
 
   for (const f of founders) {
@@ -288,6 +330,29 @@ async function main() {
   console.log(
     `Done. ${fetched} new posts fetched, ${pruned.changes} old pruned.`
   );
+
+  // Anyone not marked this run has no fresh posts behind their numbers. The
+  // board renders them as "—" rather than a zero, but the run has to say so
+  // out loud too, or a broken handle decays unnoticed for a week again.
+  const placeholders = founders.map(() => "?").join(",");
+  const unpolled = db
+    .prepare(
+      `SELECT handle FROM founders
+       WHERE handle IN (${placeholders})
+         AND (tweets_fetched_at IS NULL OR tweets_fetched_at != ?)
+       ORDER BY handle`
+    )
+    .all(...founders.map((f) => f.handle), now) as { handle: string }[];
+  if (unpolled.length > 0) {
+    const detail = unpolled
+      .map((r) => `@${r.handle} (${failures.get(r.handle) ?? "not reached"})`)
+      .join(", ");
+    // ::warning:: surfaces on the GitHub Actions run summary. Deliberately not
+    // a hard failure: a red run would block deploying the data that did work.
+    console.log(
+      `::warning::${unpolled.length} of ${founders.length} founders were not polled: ${detail}`
+    );
+  }
 }
 
 main().catch((err) => {
