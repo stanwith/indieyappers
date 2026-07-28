@@ -1,6 +1,8 @@
 import { getArcadeData } from "@/lib/arcade-data";
 import { getSessionUser } from "@/lib/auth";
 import { Arcade } from "@/components/arcade/Arcade";
+import { STANLEY_LINK } from "@/lib/links";
+import { SITE_TITLE } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,9 @@ export default async function Home({
         user: sessionUser
           ? { handle: sessionUser.handle, avatarUrl: sessionUser.avatar_url }
           : null,
+        platform: "x",
+        seeMyRankUrl: STANLEY_LINK,
+        boardTitle: SITE_TITLE,
       }}
       auth={
         authStatus

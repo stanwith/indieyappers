@@ -1,15 +1,16 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import type { ArcadeState, Action, View } from '../state'
-import { getLeaderboard, getFiltered, getArcadeUser } from '../data/leaderboard'
+import { getLeaderboard, getFiltered, getArcadeUser, getBoardTitle, getPlatform } from '../data/leaderboard'
 import { isMuted, toggleMute } from '../sound'
 import { shareSite, openPostOnX, loudestPostText } from '@/lib/share'
 
-const HINTS: Record<ArcadeState['phase'], string> = {
+// `detail` names the platform the A button opens, so it is built per board.
+const hints = (): Record<ArcadeState['phase'], string> => ({
   boot: '',
   attract: 'PRESS ENTER OR A TO INSERT COIN',
   leaderboard: '↑↓ SCROLL · A/ENTER SELECT · B/ESC BACK · ←→ 7D/30D · / SEARCH · M MUTE',
-  detail: '↑↓ PREV/NEXT · A/ENTER OPEN ON X · B/ESC BACK · M MUTE',
-}
+  detail: `↑↓ PREV/NEXT · A/ENTER OPEN ON ${getPlatform() === 'threads' ? 'THREADS' : 'X'} · B/ESC BACK · M MUTE`,
+})
 
 // stroke icons, lucide outlines — text pills read as UI clutter on a phone
 const svgProps = {
@@ -134,19 +135,22 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
     shareSite(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    })
+    }, getBoardTitle() || undefined)
   const postOnX = () => {
     const entries = getLeaderboard('7d')
     const user = getArcadeUser()
     const mine = user
       ? entries.find((e) => e.handle.toLowerCase() === user.handle.toLowerCase())
       : null
+    // The brag variants need a signed-in user, which only the X board has, so
+    // a challenge board always takes the boardTitle branch below.
     const text = mine
       ? mine.rank === 1
         ? `I'm the loudest builder on the indie timeline right now. Come take the top spot:`
         : `I'm #${mine.rank} of ${entries.length} on the indie yap leaderboard. The loudest right now is @${entries[0].handle}. See the whole board:`
-      : loudestPostText(entries[0])
-    openPostOnX(text)
+      : loudestPostText(entries[0], getBoardTitle() || undefined)
+    // A challenge board lives on a sub-path, so share its own URL, not the root.
+    openPostOnX(text, getPlatform() === 'threads' ? globalThis.location.href : undefined)
   }
 
   // keep the badge in sync with the M key
@@ -163,7 +167,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
       ? '←→ BROWSE · ESC BACK'
       : view === 'room'
         ? 'CLICK THE MACHINE OR PRESS ENTER TO PLAY · P FOR THE POSTERS'
-        : HINTS[state.phase]
+        : hints()[state.phase]
   return (
     <>
       {/* touch UI is self-describing (buttons), so hints are keyboard-only */}

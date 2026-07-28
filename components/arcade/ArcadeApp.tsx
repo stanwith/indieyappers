@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { reduce, initialState, feedback, type Action, type View } from './state'
-import { getFiltered, setArcadeData, type ArcadeData } from './data/leaderboard'
+import { getFiltered, getPlatform, setArcadeData, type ArcadeData } from './data/leaderboard'
 import { play, startMusic, toggleMute } from './sound'
 import { FrontalScene, POSTER_COUNT } from './scene/FrontalScene'
 import { Overlay } from './ui/Overlay'
 // Joining is gated behind a Stanley conversation (same funnel as v1's
 // "Message Stanley"): Stanley hands out the /join OAuth URL on the other side.
-import { STANLEY_LINK } from '@/lib/links'
+// Which Stanley page depends on the board, so the URL arrives in the data.
+import { profileUrl } from '@/lib/links'
 
 export interface ArcadeAuth {
   status: 'ok' | 'failed'
@@ -45,7 +46,7 @@ export default function ArcadeApp({ data, auth }: ArcadeProps) {
     )
   }, [])
 
-  // dispatch wrapper: sounds + control feedback + the one impure action (open X profile)
+  // dispatch wrapper: sounds + control feedback + the one impure action (open profile)
   const send = useCallback((a: Action) => {
     const s = stateRef.current
     switch (a.t) {
@@ -62,7 +63,7 @@ export default function ArcadeApp({ data, auth }: ArcadeProps) {
           play('select')
           feedback.handler?.(a)
           const e = getFiltered(s.win, s.query)[s.cursor]
-          if (e) window.open(`https://x.com/${e.handle}`, '_blank', 'noopener')
+          if (e) window.open(profileUrl(getPlatform(), e.handle), '_blank', 'noopener')
           return
         }
         break
@@ -131,6 +132,7 @@ export default function ArcadeApp({ data, auth }: ArcadeProps) {
   }, [])
 
   const signedIn = Boolean(data.user)
+  const seeMyRankUrl = data.seeMyRankUrl
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
@@ -181,13 +183,13 @@ export default function ArcadeApp({ data, auth }: ArcadeProps) {
           if (!e.repeat && viewRef.current === 'room') setView('poster')
           break
         case 'x':
-        case 'X': // open the profile on X — detail screen only
+        case 'X': // open the profile on X / Threads — detail screen only
           if (e.repeat || viewRef.current !== 'play' || stateRef.current.phase !== 'detail') break
           send({ t: 'SELECT' })
           break
         case 'j':
         case 'J': // see my rank → message Stanley — no-op once you're on the board
-          if (!e.repeat && !signedIn) window.open(STANLEY_LINK, '_blank', 'noopener')
+          if (!e.repeat && !signedIn && seeMyRankUrl) window.open(seeMyRankUrl, '_blank', 'noopener')
           break
         case 'Escape':
         case 'Backspace':
@@ -216,7 +218,7 @@ export default function ArcadeApp({ data, auth }: ArcadeProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [send, browsePoster, signedIn])
+  }, [send, browsePoster, signedIn, seeMyRankUrl])
 
   if (!ready)
     return (
@@ -252,7 +254,7 @@ export default function ArcadeApp({ data, auth }: ArcadeProps) {
           <a href="/api/auth/logout">SIGN OUT</a>
         </div>
       ) : (
-        <a className="join" href={STANLEY_LINK} target="_blank" rel="noopener noreferrer">
+        <a className="join" href={seeMyRankUrl} target="_blank" rel="noopener noreferrer">
           SEE MY RANK
         </a>
       )}
