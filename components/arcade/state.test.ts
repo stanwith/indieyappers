@@ -106,6 +106,16 @@ assert.equal(toggled(state({ cursor: 0 })).cursor, 0, 'survives an empty board')
   // a first word past the midpoint still wraps, rather than shrinking to fit on one line
   assert.equal(titleLines('International Hackathon').size, 36, 'breaks at the first space')
   assert.equal(titleLines('x'.repeat(40)).size, 14, 'an unbreakable 40-char title clamps at 14px')
+
+  // Operator-typed names are unbounded, and shrinking bottoms out at 14px, so past that a line
+  // has to be cut — 46 chars at 14px is already wider than the 640px screen.
+  const long = titleLines('The Great Indie Hacker Build In Public Challenge Summer 2026 Sponsored By Stanley')
+  for (const l of long.lines) assert.ok(l.length <= 40, `line "${l}" stays within 40 chars`)
+  assert.ok(
+    long.lines.some((l) => l.endsWith('...')),
+    'an over-long line is truncated rather than drawn off the edge',
+  )
+  assert.ok(Math.max(...long.lines.map((l) => l.length)) * long.size <= 560, 'and still fits')
 }
 
 console.log('state.test.ts: all assertions passed')

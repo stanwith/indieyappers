@@ -562,8 +562,8 @@ const MARQUEE_GLOW = '#9d8cff'
 
 // Backlit marquee art (title + mascots are baked in, one file per board). Sized by width so it
 // spans the sign edge-to-edge, with the aspect read off the source pixels — the two boards' art
-// is not the same shape. New art must stay wider than ~5.7:1 or its height exceeds the 0.15
-// black panel behind the sign.
+// is not the same shape. New art wants 5.73:1, the ratio of the 0.86 x 0.15 black panel behind
+// the sign: wider leaves black slivers top and bottom, narrower overhangs onto the cabinet.
 function MarqueeArt({ src, width, position }: { src: string; width: number; position: [number, number, number] }) {
   const tex = useTexture(src)
   useMemo(() => {
