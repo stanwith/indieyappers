@@ -114,7 +114,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
     () =>
       getFiltered(state.win, state.query).map((e) => (
         <li key={e.handle}>
-          {e.rank}. {e.name} (@{e.handle}) — {e.companyName}
+          {e.rank ? `${e.rank}.` : 'Unranked, not measurable:'} {e.name} (@{e.handle}) — {e.companyName}
           {e.blurb ? ` — ${e.blurb}` : ''}
         </li>
       )),

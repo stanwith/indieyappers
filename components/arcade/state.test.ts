@@ -20,6 +20,7 @@ const entry = (rank: number, handle: string): Entry => ({
   impressions: 0,
   rankDelta: 0,
   avatar: null,
+  stale: false,
 })
 
 const board = (handles: string[]) => handles.map((h, i) => entry(i + 1, h))

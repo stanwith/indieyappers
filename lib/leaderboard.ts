@@ -17,7 +17,47 @@ import {
   type TopTweet,
 } from "./types";
 
-type JoinedRow = FounderRow & Partial<SnapshotRow> & { captured_at?: string };
+type JoinedRow = FounderRow &
+  Partial<SnapshotRow> & { captured_at?: string; newest_fetch: string | null };
+
+/** A handle skipped for more than this long has an untrustworthy 7d window. */
+const STALE_AFTER_MS = 36 * 60 * 60 * 1000;
+
+/**
+ * True when the last refresh could not poll this handle, so its zeros are
+ * absence of evidence rather than evidence of silence.
+ *
+ * Deliberately relative to the newest fetch in the same dataset, not to
+ * Date.now(): the committed snapshot is served for a whole day, and a
+ * wall-clock comparison would mark the entire board stale whenever a deploy
+ * sat around. This only flags handles the most recent run actually skipped.
+ */
+export function isStale(
+  fetchedAt: string | null,
+  newestFetch: string | null
+): boolean {
+  if (!newestFetch) return false; // pre-migration data: nothing to compare against
+  if (!fetchedAt) return true;
+  return (
+    Date.parse(newestFetch) - Date.parse(fetchedAt) > STALE_AFTER_MS
+  );
+}
+
+/** Impressions first, yap score breaks ties — but stale entries always sink. */
+function byStandings(a: LeaderboardEntry, b: LeaderboardEntry): number {
+  return (
+    Number(a.stale) - Number(b.stale) ||
+    b.impressions - a.impressions ||
+    b.yapScore - a.yapScore ||
+    b.postsTotal - a.postsTotal
+  );
+}
+
+/** Rank the polled entries; stale ones stay at rank 0 and render as "—". */
+function assignRanks(entries: LeaderboardEntry[]): void {
+  let rank = 0;
+  for (const e of entries) e.rank = e.stale ? 0 : ++rank;
+}
 
 /**
  * Hand-written one-liners live in data/blurbs.json rather than the database:
@@ -50,6 +90,7 @@ function latestSnapshotsJoin(): JoinedRow[] {
   return db
     .prepare(
       `SELECT f.*, s.captured_at,
+              (SELECT MAX(tweets_fetched_at) FROM founders) AS newest_fetch,
               s.posts_7d_original, s.posts_7d_reply, s.posts_7d_retweet,
               s.posts_30d_original, s.posts_30d_reply, s.posts_30d_retweet,
               s.interactions_7d, s.interactions_30d,
@@ -105,22 +146,16 @@ export function getLeaderboard(window: TimeWindow): LeaderboardEntry[] {
       delta: deltas.get(r.handle) ?? null,
       rankDelta: null as number | null,
       capturedAt: r.captured_at ?? null,
+      stale: isStale(r.tweets_fetched_at, r.newest_fetch),
     };
   });
 
-  // Rank by impressions like the reference; yap score breaks ties (and
-  // carries the ordering entirely until impressions data exists).
-  entries.sort(
-    (a, b) =>
-      b.impressions - a.impressions ||
-      b.yapScore - a.yapScore ||
-      b.postsTotal - a.postsTotal
-  );
-  entries.forEach((e, i) => {
-    e.rank = i + 1;
+  entries.sort(byStandings);
+  assignRanks(entries);
+  for (const e of entries) {
     const prev = prevRanks.get(e.handle);
-    e.rankDelta = prev === undefined ? null : prev - e.rank;
-  });
+    e.rankDelta = prev === undefined || e.rank === 0 ? null : prev - e.rank;
+  }
   return entries;
 }
 
@@ -207,18 +242,14 @@ export async function getLeaderboardWithSignups(
       delta: null,
       rankDelta: null,
       capturedAt: j.metrics_updated_at,
+      stale: !j.metrics_updated_at,
     });
   }
 
   // Re-rank the combined board so sign-ups with real numbers slot in
   // where they belong instead of pooling at the bottom.
-  entries.sort(
-    (a, b) =>
-      b.impressions - a.impressions ||
-      b.yapScore - a.yapScore ||
-      b.postsTotal - a.postsTotal
-  );
-  entries.forEach((e, i) => (e.rank = i + 1));
+  entries.sort(byStandings);
+  assignRanks(entries);
   return entries;
 }
 
@@ -233,7 +264,7 @@ export async function getCompanyDetail(
 ): Promise<CompanyDetail | null> {
   const members = (await getLeaderboardWithSignups(window))
     .filter((e) => e.companySlug === slug)
-    .map((e, i) => ({ ...e, rank: i + 1 }));
+    .map((e, i) => ({ ...e, rank: e.stale ? 0 : i + 1 }));
   if (members.length === 0) return null;
 
   const db = getDb();
@@ -315,7 +346,8 @@ function getTopTweets(handles: string[]): Record<string, TopTweet[]> {
 }
 
 export function getStats(window: TimeWindow): LeaderboardStats {
-  const entries = getLeaderboard(window);
+  // Stale founders contribute nothing: their counts are last-known, not current.
+  const entries = getLeaderboard(window).filter((e) => !e.stale);
   const totalPosts = entries.reduce((sum, e) => sum + e.postsTotal, 0);
 
   const tierTotals = new Map<number, { label: string; posts: number }>();

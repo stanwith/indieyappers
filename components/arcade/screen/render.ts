@@ -17,8 +17,10 @@ const PURPLE_LIGHT = '#c3bcff'
 const PIXEL = (px: number) => `${px}px "Press Start 2P"`
 const TERM = (px: number) => `${px}px "VT323"`
 
-const fmt = (n: number): string =>
-  n >= 1e6 ? (n / 1e6).toFixed(1) + 'M'
+// null means "we could not poll this account", not zero — see LeaderboardEntry.stale
+const fmt = (n: number | null): string =>
+  n === null ? '—'
+  : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M'
   : n >= 1e4 ? Math.round(n / 1e3) + 'K'
   : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K'
   : String(Math.round(n))
@@ -234,11 +236,11 @@ function drawRow(ctx: CanvasRenderingContext2D, e: Entry, y: number, selected: b
     ctx.strokeRect(17, y - 19, SCREEN_W - 34, ROW_H - 4)
   }
   // rank, not list position: under a search filter the top three *results* aren't the top three
-  const fg = selected ? '#ffffff' : isMe ? PURPLE_LIGHT : e.rank <= 3 ? WHITE : AMBER
+  const fg = selected ? '#ffffff' : isMe ? PURPLE_LIGHT : e.rank >= 1 && e.rank <= 3 ? WHITE : AMBER
   ctx.fillStyle = fg
   ctx.font = TERM(24)
   ctx.textAlign = 'right'
-  ctx.fillText(String(e.rank), 64, y)
+  ctx.fillText(e.rank ? String(e.rank) : '—', 64, y)
   // rank delta glyph
   if (e.rankDelta !== 0) {
     ctx.font = TERM(20)
@@ -267,7 +269,7 @@ function drawRow(ctx: CanvasRenderingContext2D, e: Entry, y: number, selected: b
   ctx.font = TERM(24)
   ctx.fillStyle = fg
   ctx.textAlign = 'right'
-  ctx.fillText(fmt(e.impressions), 616, y)
+  ctx.fillText(fmt(e.stale ? null : e.impressions), 616, y)
 }
 
 function drawLeaderboard(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
@@ -342,7 +344,7 @@ function drawDetail(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
   const entries = getFiltered(s.win, s.query)
   const e: Entry | undefined = entries[Math.min(s.cursor, entries.length - 1)]
   if (!e) return
-  drawHeader(ctx, s, `RANK #${e.rank}`)
+  drawHeader(ctx, s, e.rank ? `RANK #${e.rank}` : 'UNRANKED')
   preload(entries[s.cursor + 1]?.avatar ?? null)
   preload(entries[s.cursor - 1]?.avatar ?? null)
 
@@ -383,12 +385,14 @@ function drawDetail(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
   }
 
   // stat grid
+  // Followers comes from the profile lookup, so it survives an unpollable timeline.
+  const win = (n: number) => (e.stale ? null : n);
   const stats: Array<[string, string]> = [
     ['FOLLOWERS', fmt(e.followers)],
-    ['POSTS ' + s.win.toUpperCase(), fmt(e.postsTotal)],
-    ['YAP SCORE', fmt(e.yapScore)],
-    ['INTERACTIONS', fmt(e.interactions)],
-    ['IMPRESSIONS', fmt(e.impressions)],
+    ['POSTS ' + s.win.toUpperCase(), fmt(win(e.postsTotal))],
+    ['YAP SCORE', fmt(win(e.yapScore))],
+    ['INTERACTIONS', fmt(win(e.interactions))],
+    ['IMPRESSIONS', fmt(win(e.impressions))],
     ['TREND', e.rankDelta === 0 ? '=' : e.rankDelta > 0 ? `UP ${e.rankDelta}` : `DOWN ${-e.rankDelta}`],
   ]
   const gx = [40, 250, 460]

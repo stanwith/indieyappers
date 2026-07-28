@@ -26,6 +26,7 @@ export interface FounderRow {
   company_logo: string | null;
   company_desc: string | null;
   banner_url: string | null;
+  tweets_fetched_at: string | null;
 }
 
 export interface SnapshotRow {
@@ -75,6 +76,12 @@ export interface LeaderboardEntry {
   /** Rank movement vs the previous snapshot: positive = climbed (null until two snapshots exist). */
   rankDelta: number | null;
   capturedAt: string | null;
+  /**
+   * The last refresh could not poll this account, so its numbers are stale and
+   * its zeros are not evidence. Stale entries are unranked (rank 0), sorted
+   * below the board, and rendered as "—" instead of real figures.
+   */
+  stale: boolean;
 }
 
 export interface TopTweet {
