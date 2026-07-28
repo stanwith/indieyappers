@@ -1,5 +1,12 @@
 // The 2D "arcade OS" drawn onto the CRT canvas texture. Pure drawing, no React.
-import { getLeaderboard, getFiltered, getCapturedAt, getArcadeUser, type Entry } from '../data/leaderboard'
+import {
+  getLeaderboard,
+  getFiltered,
+  getCapturedAt,
+  getArcadeUser,
+  getPlatform,
+  type Entry,
+} from '../data/leaderboard'
 import type { ArcadeState } from '../state'
 import { getImage, preload } from './assets'
 
@@ -274,9 +281,15 @@ function drawRow(ctx: CanvasRenderingContext2D, e: Entry, y: number, selected: b
 
 function drawLeaderboard(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
   const entries = getFiltered(s.win, s.query)
+  // ponytail: a fixed label per board, not the event's own name — the header
+  // has ~33 chars of Press Start 2P before it runs into the 7D/30D tabs, and
+  // real challenge names ("Build In Public 14-Day Challenge") overflow it.
+  // The specific name lives in the share copy and the browser title instead.
   const title =
     s.query === null
-      ? 'TOP 100 INDIES'
+      ? getPlatform() === 'threads'
+        ? 'BUILD IN PUBLIC'
+        : 'TOP 100 INDIES'
       : 'FIND: ' + s.query.toUpperCase().slice(0, 18) + (Math.floor(t * 3) % 2 === 0 ? '_' : '')
   drawHeader(ctx, s, title)
 
@@ -287,7 +300,7 @@ function drawLeaderboard(ctx: CanvasRenderingContext2D, s: ArcadeState, t: numbe
   ctx.textAlign = 'left'
   ctx.fillText('BUILDER', 130, 96)
   ctx.textAlign = 'right'
-  ctx.fillText('IMPRESSIONS', 616, 96)
+  ctx.fillText(getPlatform() === 'threads' ? 'VIEWS' : 'IMPRESSIONS', 616, 96)
 
   // keep cursor inside the window with a 2-row margin, lerp toward it (frame-rate independent)
   const dt = Math.min(Math.max(t - lastT, 0), 0.1)
@@ -387,14 +400,28 @@ function drawDetail(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
   // stat grid
   // Followers comes from the profile lookup, so it survives an unpollable timeline.
   const win = (n: number) => (e.stale ? null : n);
-  const stats: Array<[string, string]> = [
-    ['FOLLOWERS', fmt(e.followers)],
-    ['POSTS ' + s.win.toUpperCase(), fmt(win(e.postsTotal))],
-    ['YAP SCORE', fmt(win(e.yapScore))],
-    ['INTERACTIONS', fmt(win(e.interactions))],
-    ['IMPRESSIONS', fmt(win(e.impressions))],
-    ['TREND', e.rankDelta === 0 ? '=' : e.rankDelta > 0 ? `UP ${e.rankDelta}` : `DOWN ${-e.rankDelta}`],
-  ]
+  // A challenge board only has the three figures the leaderboard query
+  // returns — no follower count, no yap score, no rank history to trend
+  // against — so it fills the top row of the grid and leaves the second
+  // empty rather than drawing zeros as if they meant something.
+  const threads = getPlatform() === 'threads'
+  const stats: Array<[string, string]> = threads
+    ? [
+        ['VIEWS', fmt(e.impressions)],
+        ['POSTS', fmt(e.postsTotal)],
+        ['RANK', '#' + e.rank],
+      ]
+    : [
+        ['FOLLOWERS', fmt(e.followers)],
+        ['POSTS ' + s.win.toUpperCase(), fmt(win(e.postsTotal))],
+        ['YAP SCORE', fmt(win(e.yapScore))],
+        ['INTERACTIONS', fmt(win(e.interactions))],
+        ['IMPRESSIONS', fmt(win(e.impressions))],
+        ['TREND', e.rankDelta === 0 ? '=' : e.rankDelta > 0 ? `UP ${e.rankDelta}` : `DOWN ${-e.rankDelta}`],
+      ]
+  // The headline figure gets the white treatment: yap score ranks the X
+  // board, views rank a challenge.
+  const hero = threads ? 0 : 2
   const gx = [40, 250, 460]
   const gy = [268, 340]
   ctx.textAlign = 'left'
@@ -405,7 +432,7 @@ function drawDetail(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
     ctx.fillStyle = AMBER_FAINT
     ctx.fillText(label, x, y)
     ctx.font = PIXEL(16)
-    ctx.fillStyle = i === 2 ? WHITE : AMBER
+    ctx.fillStyle = i === hero ? WHITE : AMBER
     ctx.fillText(value, x, y + 30)
   }
 
@@ -413,7 +440,7 @@ function drawDetail(ctx: CanvasRenderingContext2D, s: ArcadeState, t: number) {
     ctx.font = PIXEL(13)
     ctx.textAlign = 'center'
     ctx.fillStyle = WHITE
-    ctx.fillText('A: VIEW @' + e.handle.toUpperCase() + ' ON X', 320, 412)
+    ctx.fillText('A: VIEW @' + e.handle.toUpperCase() + (threads ? ' ON THREADS' : ' ON X'), 320, 412)
   }
   drawFooter(ctx, 'B:BACK   ^/v:PREV-NEXT', t)
 }

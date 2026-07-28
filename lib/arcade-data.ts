@@ -37,7 +37,14 @@ function toEntry(e: LeaderboardEntry): Entry {
   };
 }
 
-export async function getArcadeData(): Promise<Omit<ArcadeData, "user">> {
+/**
+ * The X board's rows. The board-identity fields (platform, seeMyRankUrl,
+ * boardTitle) are supplied by the page, which is the thing that knows which
+ * board it is.
+ */
+export async function getArcadeData(): Promise<
+  Pick<ArcadeData, "capturedAt" | "windows">
+> {
   const [d7, d30] = await Promise.all([
     getLeaderboardWithSignups("7d"),
     getLeaderboardWithSignups("30d"),

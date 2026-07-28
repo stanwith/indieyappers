@@ -26,7 +26,14 @@ const entry = (rank: number, handle: string): Entry => ({
 const board = (handles: string[]) => handles.map((h, i) => entry(i + 1, h))
 
 function setup(w7: string[], w30: string[]) {
-  setArcadeData({ capturedAt: '', windows: { '7d': board(w7), '30d': board(w30) }, user: null })
+  setArcadeData({
+    capturedAt: '',
+    windows: { '7d': board(w7), '30d': board(w30) },
+    user: null,
+    platform: 'x',
+    seeMyRankUrl: '',
+    boardTitle: '',
+  })
 }
 
 const state = (over: Partial<ArcadeState> = {}): ArcadeState => ({
