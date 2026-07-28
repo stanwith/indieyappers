@@ -1,0 +1,312 @@
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('/fonts/press-start-2p.woff2') format('woff2');
+  font-display: block;
+}
+@font-face {
+  font-family: 'VT323';
+  src: url('/fonts/vt323.woff2') format('woff2');
+  font-display: block;
+}
+
+/* Scoped to .arcade-root — this stylesheet loads globally but must not leak
+   into the /v1 pages. Fixed-position children stay DOM descendants, so the
+   custom properties still inherit. */
+.arcade-root {
+  --accent: #c08cff;
+  --accent-dim: rgba(192, 140, 255, 0.45);
+  --btn-bg: rgba(14, 8, 24, 0.72);
+  /* every floating pill derives from these two */
+  --pill-h: 42px;
+  --top-inset: calc(12px + env(safe-area-inset-top));
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #050505;
+}
+
+/* R3F doesn't set this, and without it iOS overscroll fights the drag-to-look pan */
+.arcade-root canvas {
+  touch-action: none;
+}
+
+.splash {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  animation: splash-blink 1s steps(2) infinite;
+}
+@keyframes splash-blink {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.hints {
+  position: fixed;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #9b93ab;
+  text-shadow: 0 1px 3px #050505;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* top-right button row: POST ON X · SHARE · SOUND */
+.top-actions {
+  position: fixed;
+  top: var(--top-inset);
+  right: 12px;
+  display: flex;
+  gap: 8px;
+}
+@media (pointer: fine) and (max-width: 900px) {
+  /* desktop text pills stack clear of the centered JOIN pill in narrow
+     windows; the coarse-pointer layout is two icons and never needs this */
+  .top-actions {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}
+
+/* icon-only variant of the pill */
+.mute.icon {
+  width: var(--pill-h);
+  padding: 0;
+  justify-content: center;
+}
+
+/* share icon → floating menu (touch) */
+.share-wrap {
+  position: relative;
+}
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.share-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.share-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--pill-h);
+  background: var(--btn-bg);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  padding: 0 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.share-menu button:active {
+  color: #fff;
+  border-color: var(--accent);
+  background: rgba(192, 140, 255, 0.3);
+}
+
+.mute {
+  display: inline-flex;
+  align-items: center;
+  height: var(--pill-h);
+  background: var(--btn-bg);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  padding: 0 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.mute:hover,
+.mute:active {
+  color: #fff;
+  border-color: var(--accent);
+  background: rgba(192, 140, 255, 0.3);
+}
+.mute:focus-visible,
+.touch button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.back {
+  position: fixed;
+  top: var(--top-inset);
+  left: 12px;
+}
+
+/* join-the-list CTA / signed-in chip, top center */
+.join {
+  position: fixed;
+  top: var(--top-inset);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  height: var(--pill-h);
+  gap: 12px;
+  background: var(--btn-bg);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+a.join:hover {
+  color: #fff;
+  border-color: var(--accent);
+  background: rgba(192, 140, 255, 0.3);
+}
+.join a {
+  color: #9b93ab;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  text-decoration: none;
+}
+.join a:hover {
+  color: #fff;
+}
+@media (max-width: 420px) {
+  /* the centered pill shares the top row with back (left) and the icon pair
+     (right) whenever it fits; below this it drops to its own row */
+  .join {
+    top: calc(var(--top-inset) + var(--pill-h) + 10px);
+  }
+  .toast {
+    top: calc(var(--top-inset) + 2 * var(--pill-h) + 14px);
+  }
+}
+
+/* post-auth toast, under the join chip; click to dismiss */
+.toast {
+  position: fixed;
+  top: calc(var(--top-inset) + var(--pill-h) + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--btn-bg);
+  backdrop-filter: blur(6px);
+  border: 1px solid #7ddf8a;
+  border-radius: 8px;
+  color: #7ddf8a;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 12px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.toast.failed {
+  border-color: #ff6a5e;
+  color: #ff6a5e;
+}
+
+/* touch targets: 44px min, and the text needs to hold up over a bright room */
+@media (pointer: coarse) {
+  .mute {
+    font-size: 20px;
+    padding: 0 16px;
+  }
+  .mute.icon {
+    padding: 0;
+  }
+}
+
+.touch {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 20px calc(20px + env(safe-area-inset-bottom));
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.touch > div {
+  display: flex;
+  gap: 14px;
+  pointer-events: auto;
+}
+.touch .pad {
+  flex-direction: column;
+}
+.touch button {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-dim);
+  background: var(--btn-bg);
+  backdrop-filter: blur(6px);
+  color: var(--accent);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.touch button:active {
+  background: rgba(192, 140, 255, 0.35);
+  color: #fff;
+}
+.touch button.wide {
+  width: auto;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+/* poster-style < > glyphs turned a quarter turn for the scroll pad */
+.chev {
+  display: inline-block;
+  transform: rotate(90deg);
+}
+
+/* the touch-search input exists only to summon the soft keyboard; the query
+   itself is drawn on the CRT. 16px font stops iOS from zooming on focus. */
+.search-input {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+}

@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { TopNav } from "@/components/TopNav";
+import { STANLEY_LINK } from "@/lib/links";
 
 export const metadata: Metadata = {
-  title: "About — Indie Hot 100",
+  title: "About — Top 100 Indies",
   description: "Why Stanley keeps score of the indie founder timeline.",
 };
 
@@ -61,7 +62,7 @@ export default function AboutPage() {
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <a
-              href="https://x.getstanley.ai/e/indie-hacker-x-stanley"
+              href={STANLEY_LINK}
               target="_blank"
               rel="noopener noreferrer"
               className="stanley-brand-action inline-flex items-center gap-2 px-4 py-2 text-sm font-medium"

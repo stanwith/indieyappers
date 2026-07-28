@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
+import { NextResponse, type NextRequest } from "next/server";
+import { STANLEY_LINK } from "./links";
 import { getDb } from "./db";
 import {
   pgConfigured,
@@ -13,6 +15,32 @@ import type { FounderRow } from "./types";
 export const SESSION_COOKIE = "yapper_session";
 export const VERIFIER_COOKIE = "x_oauth_verifier";
 export const STATE_COOKIE = "x_oauth_state";
+export const JOIN_COOKIE = "yapper_join";
+
+/**
+ * Joining is gated: /join and the OAuth login only proceed with the token
+ * Stanley hands out in conversation (?t=... on the join URL, carried onward
+ * as a short-lived cookie). With JOIN_TOKEN unset (local dev), the gate is
+ * open.
+ * ponytail: static shared secret — the URL Stanley gives out is forwardable;
+ * upgrade to short-lived minted tokens when Stanley's side can sign them.
+ */
+export function joinTokenValid(token: string | null | undefined): boolean {
+  const expected = process.env.JOIN_TOKEN;
+  if (!expected) return true;
+  return !!token && crypto.timingSafeEqual(
+    crypto.createHash("sha256").update(token).digest(),
+    crypto.createHash("sha256").update(expected).digest()
+  );
+}
+
+/** The gate itself: null = proceed, otherwise the redirect into the funnel. */
+export function joinGate(request: NextRequest): NextResponse | null {
+  const token =
+    request.nextUrl.searchParams.get("t") ??
+    request.cookies.get(JOIN_COOKIE)?.value;
+  return joinTokenValid(token) ? null : NextResponse.redirect(STANLEY_LINK);
+}
 
 export function oauthConfig() {
   const clientId = process.env.X_CLIENT_ID;

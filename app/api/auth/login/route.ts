@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import {
   oauthConfig,
   generateVerifier,
@@ -6,9 +6,14 @@ import {
   generateState,
   VERIFIER_COOKIE,
   STATE_COOKIE,
+  joinGate,
 } from "@/lib/auth";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  // only reachable through /join with Stanley's token; see app/join/route.ts
+  const denied = joinGate(request);
+  if (denied) return denied;
+
   const config = oauthConfig();
   if (!config) {
     return NextResponse.json(
