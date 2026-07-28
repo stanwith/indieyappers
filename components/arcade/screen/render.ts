@@ -5,10 +5,12 @@ import {
   getCapturedAt,
   getArcadeUser,
   getPlatform,
+  getBoardTitle,
   type Entry,
 } from '../data/leaderboard'
 import type { ArcadeState } from '../state'
 import { getImage, preload } from './assets'
+import { titleLines } from './title'
 
 export const SCREEN_W = 640
 export const SCREEN_H = 480
@@ -156,20 +158,20 @@ function drawAttract(ctx: CanvasRenderingContext2D, t: number) {
   drawStarfield(ctx, t)
 
   ctx.textAlign = 'center'
-  // chromatic fringe on the title
-  ctx.font = PIXEL(36)
-  ctx.fillStyle = 'rgba(255,60,40,0.45)'
-  ctx.fillText('TOP 100', 318, 150 + bounce)
-  ctx.fillStyle = 'rgba(60,120,255,0.35)'
-  ctx.fillText('TOP 100', 322, 150 + bounce)
-  ctx.fillStyle = WHITE
-  ctx.fillText('TOP 100', 320, 150 + bounce)
-  ctx.fillStyle = 'rgba(255,60,40,0.45)'
-  ctx.fillText('INDIES', 318, 205 + bounce)
-  ctx.fillStyle = 'rgba(60,120,255,0.35)'
-  ctx.fillText('INDIES', 322, 205 + bounce)
-  ctx.fillStyle = PURPLE
-  ctx.fillText('INDIES', 320, 205 + bounce)
+  const { lines, size } = titleLines(getBoardTitle())
+  // the baselines the X board's two-line title has always used; a lone line sits between them
+  const ys = lines.length > 1 ? [150, 205] : [178]
+  ctx.font = PIXEL(size)
+  lines.forEach((line, i) => {
+    const y = ys[i] + bounce
+    // chromatic fringe on the title
+    ctx.fillStyle = 'rgba(255,60,40,0.45)'
+    ctx.fillText(line, 318, y)
+    ctx.fillStyle = 'rgba(60,120,255,0.35)'
+    ctx.fillText(line, 322, y)
+    ctx.fillStyle = i === 0 ? WHITE : PURPLE
+    ctx.fillText(line, 320, y)
+  })
 
   ctx.font = TERM(24)
   ctx.fillStyle = AMBER_DIM

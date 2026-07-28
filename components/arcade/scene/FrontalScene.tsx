@@ -9,6 +9,7 @@ import { EffectComposer, Bloom, Noise, Vignette, ToneMapping } from '@react-thre
 import { ToneMappingMode } from 'postprocessing'
 import type { MutableRefObject } from 'react'
 import { feedback, type ArcadeState, type Action, type View } from '../state'
+import { getPlatform } from '../data/leaderboard'
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
 import { useCRT, emission } from './crt'
 
@@ -555,26 +556,25 @@ function PushButton({
   )
 }
 
-// Backlit marquee art (title + mascots are baked into the image).
-// ponytail: aspect from the source pixels, so the logo never stretches — swapping in a
-// differently-proportioned image only needs this ratio updated.
-const MARQUEE_ASPECT = 2088 / 333
-
 // Spill colour of the marquee backlight onto the cabinet. Violet to match the blue/pink
 // neon in the art — the tuning knob if the artwork's palette changes.
 const MARQUEE_GLOW = '#9d8cff'
 
-// Sized by width so the art spans the sign edge-to-edge. Any leftover height is the image's
-// own black padding, which blends into the black panel behind it.
-function MarqueeArt({ width, position }: { width: number; position: [number, number, number] }) {
-  const tex = useTexture('/marquee.webp')
+// Backlit marquee art (title + mascots are baked in, one file per board). Sized by width so it
+// spans the sign edge-to-edge, with the aspect read off the source pixels — the two boards' art
+// is not the same shape. New art must stay wider than ~5.7:1 or its height exceeds the 0.15
+// black panel behind the sign.
+function MarqueeArt({ src, width, position }: { src: string; width: number; position: [number, number, number] }) {
+  const tex = useTexture(src)
   useMemo(() => {
     tex.colorSpace = THREE.SRGBColorSpace
     tex.anisotropy = 8
   }, [tex])
+  // three types .image as unknown; from TextureLoader it is the <img>, with the source pixel size
+  const img = tex.image as HTMLImageElement
   return (
     <mesh position={position} raycast={() => null}>
-      <planeGeometry args={[width, width / MARQUEE_ASPECT]} />
+      <planeGeometry args={[width, (width * img.height) / img.width]} />
       <meshStandardMaterial
         map={tex}
         emissiveMap={tex}
@@ -1048,7 +1048,12 @@ function Cabinet({ stateRef, send, viewRef, onEnterPlay }: CabProps) {
           intensity={0.9}
           color={MARQUEE_GLOW}
         />
-        <MarqueeArt width={0.86} position={[0, 0, 0.009]} />
+        {/* the board wears its own sign — a Threads challenge board is not the X top 100 */}
+        <MarqueeArt
+          src={getPlatform() === 'threads' ? '/marquee-threads.webp' : '/marquee.webp'}
+          width={0.86}
+          position={[0, 0, 0.009]}
+        />
       </group>
 
       {/* ---- shadowbox recess: one seamless beveled bezel with a flared rounded hole ---- */}

@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict'
 import { setArcadeData, type Entry } from './data/leaderboard'
 import { reduce, type ArcadeState, type Phase } from './state'
+import { titleLines } from './screen/title'
 
 const entry = (rank: number, handle: string): Entry => ({
   rank,
@@ -86,5 +87,25 @@ setup(['ann', 'bob', 'cal'], ['cal', 'ann', 'bob'])
 // empty board at all: cursor stays put rather than going NaN
 setup([], [])
 assert.equal(toggled(state({ cursor: 0 })).cursor, 0, 'survives an empty board')
+
+// --- attract-screen title layout (titleLines) ---
+// Piggybacking on the arcade's one unit-test file rather than earning a second entry in
+// package.json's test script.
+{
+  // the X board's title must keep drawing exactly as it did when it was hardcoded
+  const x = titleLines('Top 100 Indies')
+  assert.deepEqual(x.lines, ['TOP 100', 'INDIES'], 'X board still splits TOP 100 / INDIES')
+  assert.equal(x.size, 36, 'X board still draws at 36px')
+
+  // a real challenge name: two balanced lines, shrunk just enough to fit
+  const ev = titleLines('Build In Public 14-Day Challenge')
+  assert.deepEqual(ev.lines, ['BUILD IN PUBLIC', '14-DAY CHALLENGE'], 'balances the event name')
+  assert.equal(ev.size, 35, 'event name shrinks to fit the 560px title width')
+
+  assert.deepEqual(titleLines('  hackathon ').lines, ['HACKATHON'], 'one word stays one line')
+  // a first word past the midpoint still wraps, rather than shrinking to fit on one line
+  assert.equal(titleLines('International Hackathon').size, 36, 'breaks at the first space')
+  assert.equal(titleLines('x'.repeat(40)).size, 14, 'an unbreakable 40-char title clamps at 14px')
+}
 
 console.log('state.test.ts: all assertions passed')
