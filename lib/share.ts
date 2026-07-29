@@ -25,14 +25,17 @@ const INTENT: Record<Platform, string> = {
 };
 
 /**
- * `url` defaults to the origin because the X board IS the root page. A board
- * that lives on a sub-path (a Threads challenge) has to pass its own href, or
- * the shared link lands people on the X leaderboard instead.
+ * `url` defaults per board: the X board IS the root page, so it shares the
+ * origin, while a Threads challenge lives on a sub-path and has to share its
+ * own href or the link lands people on the X leaderboard instead. Enforced
+ * here rather than at the call site — the caller that forgets is the bug.
  */
 export function openPost(
   platform: Platform,
   text: string,
-  url: string = globalThis.location.origin
+  url: string = platform === "threads"
+    ? globalThis.location.href
+    : globalThis.location.origin
 ) {
   globalThis.open(
     `${INTENT[platform]}?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,

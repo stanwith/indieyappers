@@ -153,8 +153,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
         ? `I'm the loudest builder on the indie timeline right now. Come take the top spot:`
         : `I'm #${mine.rank} of ${entries.length} on the indie yap leaderboard. The loudest right now is @${entries[0].handle}. See the whole board:`
       : loudestPostText(entries[0], getBoardTitle())
-    // A challenge board lives on a sub-path, so share its own URL, not the root.
-    openPost(platform, text, platform === 'threads' ? globalThis.location.href : undefined)
+    openPost(platform, text)
   }
 
   // keep the badge in sync with the M key
@@ -321,7 +320,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
           </div>
         )}
       </div>
-      <ol className="sr-only" aria-label="Top 100 Indies leaderboard">
+      <ol className="sr-only" aria-label={`${getBoardTitle()} leaderboard`}>
         {srRows}
       </ol>
     </>

@@ -16,6 +16,6 @@ export type Platform = "x" | "threads";
 /** Public profile URL for a board entry. */
 export function profileUrl(platform: Platform, handle: string): string {
   return platform === "threads"
-    ? `https://www.threads.net/@${handle}`
+    ? `https://www.threads.com/@${handle}`
     : `https://x.com/${handle}`;
 }
