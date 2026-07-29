@@ -27,7 +27,10 @@ export async function generateMetadata({
   const title = `${board.challenge.name} — live leaderboard`;
   const description =
     "Total Threads views on build-in-public posts during the challenge. Tracked by Stanley.";
-  return { title, description, openGraph: { title, description } };
+  // No explicit openGraph block: Next fills og:title/og:description from
+  // title/description, and declaring openGraph here would replace the object
+  // inherited from the root segment — dropping app/opengraph-image.png.
+  return { title, description };
 }
 
 export default async function ThreadsChallengePage({
