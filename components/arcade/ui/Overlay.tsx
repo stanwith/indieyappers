@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import type { ArcadeState, Action, View } from '../state'
 import { getLeaderboard, getFiltered, getArcadeUser, getBoardTitle, getPlatform } from '../data/leaderboard'
 import { isMuted, toggleMute } from '../sound'
-import { shareSite, openPostOnX, loudestPostText } from '@/lib/share'
+import { shareSite, openPost, loudestPostText } from '@/lib/share'
 
 // `detail` names the platform the A button opens, so it is built per board.
 const hints = (): Record<ArcadeState['phase'], string> => ({
@@ -136,7 +136,11 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     }, getBoardTitle())
-  const postOnX = () => {
+  // the button names the board's own network, so a challenge board never
+  // hands people off to X
+  const platform = getPlatform()
+  const postLabel = platform === 'threads' ? 'POST ON THREADS' : 'POST ON X'
+  const post = () => {
     const entries = getLeaderboard('7d')
     const user = getArcadeUser()
     const mine = user
@@ -149,8 +153,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
         ? `I'm the loudest builder on the indie timeline right now. Come take the top spot:`
         : `I'm #${mine.rank} of ${entries.length} on the indie yap leaderboard. The loudest right now is @${entries[0].handle}. See the whole board:`
       : loudestPostText(entries[0], getBoardTitle())
-    // A challenge board lives on a sub-path, so share its own URL, not the root.
-    openPostOnX(text, getPlatform() === 'threads' ? globalThis.location.href : undefined)
+    openPost(platform, text)
   }
 
   // keep the badge in sync with the M key
@@ -261,8 +264,8 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
       <div className="top-actions">
         {!coarse && (
           <>
-            <button className="mute" onClick={postOnX}>
-              POST ON X
+            <button className="mute" onClick={post}>
+              {postLabel}
             </button>
             <button className="mute" onClick={share}>
               {copied ? 'COPIED!' : 'SHARE'}
@@ -306,10 +309,10 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
                   <button
                     onClick={() => {
                       setMenuOpen(false)
-                      postOnX()
+                      post()
                     }}
                   >
-                    POST ON X
+                    {postLabel}
                   </button>
                 </div>
               </>
@@ -317,7 +320,7 @@ export function Overlay({ state, send, view, onStepBack, onBrowsePoster }: Overl
           </div>
         )}
       </div>
-      <ol className="sr-only" aria-label="Top 100 Indies leaderboard">
+      <ol className="sr-only" aria-label={`${getBoardTitle()} leaderboard`}>
         {srRows}
       </ol>
     </>

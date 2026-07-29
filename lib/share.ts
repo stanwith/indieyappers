@@ -1,3 +1,5 @@
+import type { Platform } from "@/lib/links";
+
 export const SITE_TITLE = "Top 100 Indies";
 
 /**
@@ -16,14 +18,27 @@ export function shareSite(onCopy?: () => void, title: string = SITE_TITLE) {
   }
 }
 
+/** Both composers take the same ?text=&url= shape, so one builder covers them. */
+const INTENT: Record<Platform, string> = {
+  x: "https://x.com/intent/post",
+  threads: "https://www.threads.com/intent/post",
+};
+
 /**
- * `url` defaults to the origin because the X board IS the root page. A board
- * that lives on a sub-path (a Threads challenge) has to pass its own href, or
- * the shared link lands people on the X leaderboard instead.
+ * `url` defaults per board: the X board IS the root page, so it shares the
+ * origin, while a Threads challenge lives on a sub-path and has to share its
+ * own href or the link lands people on the X leaderboard instead. Enforced
+ * here rather than at the call site — the caller that forgets is the bug.
  */
-export function openPostOnX(text: string, url: string = globalThis.location.origin) {
+export function openPost(
+  platform: Platform,
+  text: string,
+  url: string = platform === "threads"
+    ? globalThis.location.href
+    : globalThis.location.origin
+) {
   globalThis.open(
-    `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+    `${INTENT[platform]}?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
     "_blank"
   );
 }

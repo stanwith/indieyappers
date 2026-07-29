@@ -61,7 +61,7 @@
   user-select: none;
 }
 
-/* top-right button row: POST ON X · SHARE · SOUND */
+/* top-right button row: POST ON <board's network> · SHARE · SOUND */
 .top-actions {
   position: fixed;
   top: var(--top-inset);

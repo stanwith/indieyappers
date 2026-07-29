@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { LeaderboardEntry, TimeWindow } from "@/lib/types";
 import { formatCompact, formatNumber } from "@/lib/format";
-import { shareSite, openPostOnX, loudestPostText } from "@/lib/share";
+import { shareSite, openPost, loudestPostText } from "@/lib/share";
 import { Avatar } from "./Avatar";
 import { WindowToggle } from "./WindowToggle";
 
@@ -43,7 +43,7 @@ export function YapperBoard({
 
   const copyLink = () => navigator.clipboard.writeText(globalThis.location.href);
   const share = () => shareSite();
-  const postOnX = () => openPostOnX(loudestPostText(entries[0]));
+  const postOnX = () => openPost("x", loudestPostText(entries[0]));
 
   return (
     <div className="flex flex-col gap-5">
